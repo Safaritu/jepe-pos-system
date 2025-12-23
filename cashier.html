@@ -27,7 +27,6 @@
         
         .btn-start { background: var(--income); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-close { background: var(--expense); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-history { background: #6366f1; color: white; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
         .btn-gas-hub { background: linear-gradient(135deg, #f59e0b, #d97706); color: black; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
 
         .grid-3 { display: grid; grid-template-columns: 1fr; gap: 15px; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background-color: #f8f9fa; margin-bottom: 25px; }
@@ -38,22 +37,21 @@
         .tables-wrapper { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; }
         @media (min-width: 1024px) { .tables-wrapper { grid-template-columns: 1.2fr 0.8fr; } }
         
-        .table-container { background: white; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%; }
+        .table-container { background: white; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th, td { border-bottom: 1px solid #f1f5f9; padding: 12px; text-align: left; }
         th { background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; }
 
         @media (max-width: 650px) {
-            table, thead, tbody, th, td, tr { display: block; width: 100%; }
-            thead { display: none; }
-            tr { margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-            td { text-align: right; padding-left: 50%; position: relative; border-bottom: 1px solid #f8fafc; min-height: 40px; }
-            td::before {
+            .responsive-table table, .responsive-table thead, .responsive-table tbody, .responsive-table th, .responsive-table td, .responsive-table tr { display: block; width: 100%; }
+            .responsive-table thead { display: none; }
+            .responsive-table tr { margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; background: #fff; }
+            .responsive-table td { text-align: right; padding-left: 50%; position: relative; border-bottom: 1px solid #f8fafc; min-height: 40px; }
+            .responsive-table td::before {
                 content: attr(data-label);
                 position: absolute; left: 12px; width: 45%; text-align: left;
                 font-weight: 700; color: #64748b; font-size: 0.65rem; text-transform: uppercase;
             }
-            td:last-child { border-bottom: none; }
         }
 
         .method-breakdown { font-size: 0.7rem; color: #64748b; display: block; line-height: 1.2; margin-bottom: 4px; }
@@ -111,7 +109,6 @@
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <a href="indexgas.html" class="btn-gas-hub"><i class="fas fa-gas-pump"></i> GAS</a>
-                <a href="history.html" class="btn-history"><i class="fas fa-history"></i> SALES HISTORY</a>
                 <div id="shift-actions"></div>
                 <button onclick="document.getElementById('transModal').style.display='flex'" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:10px; border-radius:6px; font-weight:bold; cursor:pointer;">
                     <i class="fas fa-exchange-alt"></i> +/- Log
@@ -156,8 +153,11 @@
 
         <div class="tables-wrapper">
             <div>
-                <h3 style="font-size: 0.9rem; margin-bottom:10px;"><i class="fas fa-shopping-cart"></i> Recent Sales</h3>
-                <div class="table-container">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="font-size: 0.9rem; margin-bottom:10px;"><i class="fas fa-shopping-cart"></i> Recent Sales</h3>
+                    <button onclick="showSalesHistory()" style="background:none; border:none; color:var(--primary); font-weight:bold; cursor:pointer; font-size:0.8rem;">View All History</button>
+                </div>
+                <div class="table-container responsive-table">
                     <table>
                         <thead><tr><th>Item</th><th>Amt</th><th>Via</th><th>Time</th></tr></thead>
                         <tbody id="sales-body"></tbody>
@@ -166,7 +166,7 @@
             </div>
             <div>
                 <h3 style="font-size: 0.9rem;"><i class="fas fa-file-invoice-dollar"></i> Money Logs</h3>
-                <div class="table-container">
+                <div class="table-container responsive-table">
                     <table>
                         <thead><tr><th>Type</th><th>Amt</th><th>Acc</th><th>Note</th></tr></thead>
                         <tbody id="trans-body"></tbody>
@@ -182,7 +182,7 @@
                     <i class="fas fa-file-pdf"></i> Last Shift Report
                 </button>
             </div>
-            <div class="table-container">
+            <div class="table-container responsive-table">
                 <table>
                     <thead>
                         <tr>
@@ -235,6 +235,23 @@
         </div>
     </div>
 
+    <div id="salesHistoryModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Full Sales History</h3>
+                <button onclick="document.getElementById('salesHistoryModal').style.display='none'" style="font-size:1.5rem; background:none; border:none; cursor:pointer;">&times;</button>
+            </div>
+            <div class="table-container" style="max-height: 70vh; overflow-y:auto;">
+                <table style="font-size:0.75rem;">
+                    <thead>
+                        <tr><th>Time</th><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th>Method</th><th>Note</th></tr>
+                    </thead>
+                    <tbody id="full-sales-history-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div id="transModal" class="modal-overlay">
         <div class="modal-content" style="background:#1e293b; color:white;">
             <h3>Adjustment</h3>
@@ -281,6 +298,7 @@
         let historyOffset = 0;
         const historyLimit = 10;
         let lastClosedShift = null;
+        let allCurrentShiftSales = [];
 
         async function init() {
             const [userResponse, shiftResponse, prodResponse] = await Promise.all([
@@ -355,7 +373,6 @@
 
         async function renderHistory(shifts) {
             const tbody = document.getElementById('history-body');
-
             for (const s of shifts) {
                 const endTime = s.closed_at || new Date().toISOString();
                 const { data: logs } = await supabase.from('store_transactions')
@@ -412,7 +429,7 @@
                 supabase.from('store_transactions').select('*').eq('user_id', currentUser.id).gte('created_at', currentShift.opened_at)
             ]);
 
-            const sales = salesResponse.data || [];
+            allCurrentShiftSales = salesResponse.data || [];
             const trans = transResponse.data || [];
 
             activeBalances = { 
@@ -422,7 +439,7 @@
                 equity: Number(currentShift.opening_float_equity || 0) 
             };
 
-            sales.forEach(s => {
+            allCurrentShiftSales.forEach(s => {
                 const m = s.payment_method.toLowerCase();
                 if(m.includes('cash')) activeBalances.cash += s.total_amount;
                 else if(m.includes('mpesa')) activeBalances.mpesa += s.total_amount;
@@ -447,7 +464,7 @@
             document.getElementById('bal-kcb').innerText = activeBalances.kcb.toLocaleString();
             document.getElementById('bal-equity').innerText = activeBalances.equity.toLocaleString();
             
-            document.getElementById('sales-body').innerHTML = sales.slice(-10).reverse().map(s => `
+            document.getElementById('sales-body').innerHTML = allCurrentShiftSales.slice(-10).reverse().map(s => `
                 <tr>
                     <td data-label="Item">${s.item_name}</td>
                     <td data-label="Amt">${s.total_amount.toLocaleString()}</td>
@@ -463,6 +480,23 @@
                     <td data-label="Note">${t.note || '-'}</td>
                 </tr>`).join('');
         }
+
+        window.showSalesHistory = () => {
+            const modal = document.getElementById('salesHistoryModal');
+            const body = document.getElementById('full-sales-history-body');
+            body.innerHTML = allCurrentShiftSales.slice().reverse().map(s => `
+                <tr>
+                    <td>${new Date(s.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td>${s.item_name}</td>
+                    <td>${s.quantity}</td>
+                    <td>${Number(s.unit_price).toLocaleString()}</td>
+                    <td>${Number(s.total_amount).toLocaleString()}</td>
+                    <td>${s.payment_method}</td>
+                    <td><small>${s.note || '-'}</small></td>
+                </tr>
+            `).join('');
+            modal.style.display = 'flex';
+        };
 
         function updateTotals() {
             const price = parseFloat(document.getElementById('pPrice').value) || 0;
@@ -485,16 +519,35 @@
         document.getElementById('sale-form').onsubmit = async (e) => {
             e.preventDefault();
             const btn = document.getElementById('sale-submit-btn');
+            const sellingPrice = parseFloat(document.getElementById('pPrice').value);
+            const minPrice = parseFloat(selectedItem.min_price || 0);
+            let saleNote = "";
+
+            if (sellingPrice < minPrice) {
+                const pass = prompt("Price below minimum! Enter Admin Password:");
+                if (pass !== "1234") {
+                    alert("Unauthorized! Sale cancelled.");
+                    return;
+                }
+                saleNote = prompt("Enter reason for selling below minimum price:");
+                if (!saleNote) {
+                    alert("A reason is required for discounted sales.");
+                    return;
+                }
+                saleNote = "DISCOUNTED: " + saleNote;
+            }
+
             btn.disabled = true;
             const { error } = await supabase.from('sales').insert({ 
                 item_name: selectedItem.name, 
                 quantity: document.getElementById('pQty').value, 
-                unit_price: document.getElementById('pPrice').value, 
+                unit_price: sellingPrice, 
                 total_amount: parseFloat(document.getElementById('pTotal').value), 
                 payment_method: document.getElementById('pMethod').value, 
-                user_id: currentUser.id 
+                user_id: currentUser.id,
+                note: saleNote
             });
-            if(!error) location.reload(); else btn.disabled = false;
+            if(!error) location.reload(); else { alert("Error saving sale."); btn.disabled = false; }
         };
 
         window.calculateShiftTotals = () => {

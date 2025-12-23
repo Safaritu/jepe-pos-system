@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shop | Suppliers</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: #1e293b; 
+            --accent: #00ffcc; 
+            --text-main: #f8fafc; 
+            --sidebar-width: 240px; 
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        /* Sidebar Responsive */
+        .sidebar { 
+            width: var(--sidebar-width); background: #020617; height: 100vh; position: fixed; 
+            padding: 20px; border-right: 1px solid #334155; z-index: 1000; transition: 0.3s;
+        }
+
+        .main-content { 
+            margin-left: var(--sidebar-width); padding: 20px; width: calc(100% - var(--sidebar-width)); 
+            box-sizing: border-box; transition: 0.3s;
+        }
+
+        /* Form Card */
+        .form-card { 
+            background: var(--card-bg); padding: 20px; border-radius: 12px; 
+            margin-bottom: 25px; border: 1px solid #334155; 
+        }
+        
+        /* Grid-4 becomes Grid-1 on Mobile */
+        .grid-4 { 
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; 
+        }
+
+        input, select { 
+            padding: 12px; border-radius: 8px; border: 1px solid #334155; 
+            background: #0f172a; color: white; width: 100%; box-sizing: border-box; font-size: 16px;
+        }
+
+        .btn-add { 
+            padding: 12px; background: var(--accent); border: none; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; color: #020617; width: 100%; grid-column: span 4;
+            transition: 0.2s;
+        }
+        .btn-add:active { transform: scale(0.98); }
+
+        /* Table/Card Layout */
+        .table-container { 
+            background: var(--card-bg); border-radius: 12px; border: 1px solid #334155; 
+            overflow: hidden; 
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px; background: #020617; color: var(--accent); font-size: 0.75rem; text-transform: uppercase; }
+        td { padding: 15px 12px; border-bottom: 1px solid #334155; }
+
+        .gas-tag { 
+            background: rgba(0, 255, 204, 0.1); color: var(--accent); padding: 3px 8px; 
+            border-radius: 4px; font-size: 0.7rem; border: 1px solid var(--accent); white-space: nowrap;
+        }
+
+        /* MOBILE OPTIMIZATION */
+        @media (max-width: 1024px) {
+            .sidebar { width: 60px; padding: 15px 5px; }
+            .sidebar h2, .sidebar span { display: none; }
+            .main-content { margin-left: 60px; width: calc(100% - 60px); }
+        }
+
+        @media (max-width: 768px) {
+            .grid-4 { grid-template-columns: 1fr; }
+            .btn-add { grid-column: span 1; }
+            
+            thead { display: none; }
+            tr { display: block; border-bottom: 4px solid #0f172a; padding: 10px; }
+            td { display: block; width: 100%; padding: 8px 5px; border: none; }
+            td::before { 
+                content: attr(data-label); display: block; font-size: 0.65rem; 
+                color: var(--accent); font-weight: bold; margin-bottom: 4px; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <h2 style="color:var(--accent); text-align: center;">SS</h2>
+        <a href="admin.html" class="nav-item" style="color:#94a3b8; text-decoration:none; display:block; padding:15px 0; text-align:center;"><i class="fas fa-chart-line"></i> <span>Dashboard</span></a>
+        <a href="inventory.html" class="nav-item" style="color:#94a3b8; text-decoration:none; display:block; padding:15px 0; text-align:center;"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
+        <a href="suppliers.html" class="nav-item" style="color:var(--accent); text-decoration:none; display:block; padding:15px 0; text-align:center;"><i class="fas fa-truck"></i> <span>Suppliers</span></a>
+    </nav>
+
+    <main class="main-content">
+        <h1>Suppliers</h1>
+        
+        <div class="form-card">
+            <h3 style="margin-top:0; font-size: 1rem;">Register New Supplier</h3>
+            <form id="supForm" class="grid-4">
+                <input type="text" id="sName" placeholder="Company Name" required>
+                <input type="text" id="sContact" placeholder="Contact Person">
+                <input type="text" id="sPhone" placeholder="Phone Number" required>
+                <select id="sCat">
+                    <option value="General">General Category</option>
+                    <option value="Gas">Gas Supplier</option>
+                </select>
+                <button type="submit" class="btn-add">Save Supplier</button>
+            </form>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Supplier Details</th>
+                        <th>Contact</th>
+                        <th>Category</th>
+                        <th>Gas Brands</th>
+                    </tr>
+                </thead>
+                <tbody id="supBody">
+                    <tr><td colspan="4" style="text-align:center">Loading directory...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        async function loadSuppliers() {
+            const tbody = document.getElementById('supBody');
+            try {
+                // Ensure the fk relationship matches your Supabase schema
+                const { data: suppliers, error } = await supabase
+                    .from('suppliers')
+                    .select('*, gas_stock!fk_supplier_final(brand_name, size_kg)')
+                    .order('name', { ascending: true });
+
+                if (error) throw error;
+
+                tbody.innerHTML = suppliers.map(s => {
+                    const gasLinks = s.gas_stock?.map(g => 
+                        `<span class="gas-tag">${g.brand_name} ${g.size_kg}kg</span>`
+                    ).join('') || '<span style="color:#64748b">None</span>';
+
+                    return `
+                        <tr>
+                            <td data-label="Supplier">
+                                <div style="font-weight:bold; color:white;">${s.name}</div>
+                                <div style="font-size:0.8rem; color:#94a3b8;">${s.phone}</div>
+                            </td>
+                            <td data-label="Contact Person">${s.contact_person || 'N/A'}</td>
+                            <td data-label="Category">${s.category}</td>
+                            <td data-label="Linked Brands"><div style="display:flex; flex-wrap:wrap; gap:5px;">${gasLinks}</div></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="color:#ef4444">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        document.getElementById('supForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const { error } = await supabase.from('suppliers').insert([{
+                name: document.getElementById('sName').value,
+                contact_person: document.getElementById('sContact').value,
+                phone: document.getElementById('sPhone').value,
+                category: document.getElementById('sCat').value
+            }]);
+            
+            if(!error) {
+                e.target.reset();
+                loadSuppliers();
+            } else {
+                alert("Error: " + error.message);
+            }
+        };
+
+        loadSuppliers();
+    </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shop | Shift Auditor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: #1e293b; 
+            --accent: #00ffcc; 
+            --text-main: #f8fafc; 
+            --sidebar-width: 240px; 
+            --shortage: #ef4444; 
+            --over: #22c55e; 
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-main); margin: 0; display: flex; flex-direction: column; }
+
+        .sidebar { 
+            width: var(--sidebar-width); background: #020617; height: 100vh; position: fixed; 
+            padding: 20px; border-right: 1px solid #334155; z-index: 1000; transition: 0.3s;
+        }
+
+        .main-content { 
+            margin-left: var(--sidebar-width); padding: 20px; width: calc(100% - var(--sidebar-width)); 
+            box-sizing: border-box; transition: 0.3s;
+        }
+
+        .header-flex { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+        .search-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        .search-box { 
+            background: var(--card-bg); border: 1px solid #334155; padding: 10px; 
+            border-radius: 8px; flex: 1; min-width: 140px; display: flex; align-items: center; gap: 8px; 
+        }
+        .search-box input { background: transparent; border: none; color: white; outline: none; width: 100%; font-size: 16px; }
+        .search-box label { color: var(--accent); font-size: 0.65rem; font-weight: bold; white-space: nowrap; }
+
+        .stats-wrapper { overflow-x: auto; margin-bottom: 20px; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+        .stats-grid { display: flex; gap: 12px; min-width: max-content; }
+        .stat-card { 
+            background: var(--card-bg); padding: 12px; border-radius: 12px; 
+            border-top: 3px solid var(--accent); min-width: 130px; 
+        }
+        .stat-card h3 { font-size: 0.6rem; color: #94a3b8; text-transform: uppercase; margin: 0; }
+        .stat-card .value { font-size: 0.9rem; font-weight: bold; margin-top: 5px; }
+
+        .activity-card { background: var(--card-bg); border-radius: 12px; border: 1px solid #334155; overflow: hidden; }
+        .styled-table { width: 100%; border-collapse: collapse; }
+        
+        .styled-table th { background: #020617; text-align: left; color: #94a3b8; padding: 12px; font-size: 0.75rem; text-transform: uppercase; }
+        .styled-table td { padding: 15px 12px; border-bottom: 1px solid #334155; vertical-align: top; }
+
+        .grand-total-box { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.2); padding: 4px 8px; border-radius: 4px; color: var(--accent); font-weight: bold; font-size: 0.8rem; display: inline-block; margin-top: 5px; }
+        .variance-tag { padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
+        .v-pos { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid #22c55e; }
+        .v-neg { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; }
+        .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-left: 5px; }
+        .live { background: var(--accent); color: #000; }
+        .closed { background: #475569; color: #fff; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 0; padding: 0; overflow: hidden; }
+            .main-content { margin-left: 0; width: 100%; padding: 15px; }
+            .styled-table thead { display: none; }
+            .styled-table tr { display: block; border-bottom: 8px solid #0f172a; padding: 15px; }
+            .styled-table td { display: block; width: 100%; padding: 8px 0; border: none; }
+            .styled-table td::before { content: attr(data-label); display: block; font-size: 0.65rem; color: var(--accent); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
+        }
+
+        @media (min-width: 1024px) {
+            .header-flex { flex-direction: row; }
+            .stats-grid { display: grid; grid-template-columns: repeat(7, 1fr); min-width: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <h2 style="color: var(--accent);">Smart Shop</h2>
+        <a href="admin.html" class="nav-item" style="color:#94a3b8; text-decoration:none; display:block; padding:10px;"><i class="fas fa-chart-line"></i> Dashboard</a>
+        <a href="inventory.html" class="nav-item" style="color:#94a3b8; text-decoration:none; display:block; padding:10px;"><i class="fas fa-boxes"></i> Inventory</a>
+        <a href="shift-auditor.html" class="nav-item active" style="color:var(--accent); text-decoration:none; display:block; padding:10px;"><i class="fas fa-history"></i> Shift Audit</a>
+    </nav>
+
+    <main class="main-content">
+        <div class="header-flex">
+            <div>
+                <h1 style="margin:0; font-size: 1.5rem;">Shift Audit</h1>
+                <p id="last-update" style="color: #94a3b8; font-size: 0.75rem;">Syncing data...</p>
+            </div>
+            <div class="search-container">
+                <div class="search-box">
+                    <label>CASHIER</label>
+                    <input type="text" id="nameSearch" placeholder="Name...">
+                </div>
+                <div class="search-box">
+                    <label>DATE</label>
+                    <input type="date" id="dateSearch">
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-wrapper">
+            <section class="stats-grid">
+                <div class="stat-card"><h3>Live Cash</h3><div class="value" id="total-cash-only">KES 0</div></div>
+                <div class="stat-card"><h3>Live Mpesa</h3><div class="value" id="total-mpesa-only">KES 0</div></div>
+                <div class="stat-card"><h3>Live KCB</h3><div class="value" id="total-kcb-only">KES 0</div></div>
+                <div class="stat-card"><h3>Live Equity</h3><div class="value" id="total-equity-only">KES 0</div></div>
+                <div class="stat-card" style="border-top-color: #4ade80;"><h3>Manual In</h3><div class="value" id="total-money-in">KES 0</div></div>
+                <div class="stat-card" style="border-top-color: #ef4444;"><h3>Total Out</h3><div class="value" id="total-expenses">KES 0</div></div>
+                <div class="stat-card" style="border-top-color: #f59e0b;"><h3>Net Shift</h3><div class="value" id="total-combined">KES 0</div></div>
+            </section>
+        </div>
+
+        <section class="activity-card">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Cashier / Date & Time</th>
+                        <th>Opening Floats</th>
+                        <th>Money IN/OUT</th>
+                        <th>Closing (Actual)</th>
+                        <th>Variance</th>
+                    </tr>
+                </thead>
+                <tbody id="auditBody"></tbody>
+            </table>
+        </section>
+    </main>
+
+<script type="module">
+    import { supabase } from './auth.js';
+
+    const format = (v) => Number(v || 0).toLocaleString();
+
+    async function loadAuditData() {
+        const nameQuery = document.getElementById('nameSearch').value.toLowerCase();
+        const dateQuery = document.getElementById('dateSearch').value;
+
+        const { data: profileList } = await supabase.from('profiles').select('id, name');
+        const profileMap = Object.fromEntries(profileList?.map(p => [p.id, p.name]) || []);
+        const matchedIds = profileList?.filter(p => p.name.toLowerCase().includes(nameQuery)).map(p => p.id) || [];
+
+        let query = supabase.from('shifts').select('*').order('opened_at', { ascending: false });
+        if (dateQuery) query = query.gte('opened_at', `${dateQuery}T00:00:00`).lte('opened_at', `${dateQuery}T23:59:59`);
+        if (nameQuery) query = query.in('cashier_id', matchedIds);
+        else if (!dateQuery) query = query.limit(30);
+
+        const { data: shifts } = await query;
+        const tbody = document.getElementById('auditBody');
+        
+        let hTotals = { cash: 0, mpesa: 0, kcb: 0, equity: 0, out: 0, manualIn: 0 };
+
+        if (!shifts || shifts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px; color:#94a3b8;">No records found.</td></tr>';
+            return;
+        }
+
+        const rowPromises = shifts.map(async (shift) => {
+            const endTime = shift.closed_at || new Date().toISOString();
+            const [salesRes, transRes] = await Promise.all([
+                supabase.from('sales').select('total_amount, payment_method').eq('user_id', shift.cashier_id).gte('created_at', shift.opened_at).lte('created_at', endTime),
+                supabase.from('store_transactions').select('amount, type').eq('user_id', shift.cashier_id).gte('created_at', shift.opened_at).lte('created_at', endTime)
+            ]);
+
+            let sCash = 0, sMpesa = 0, sKcb = 0, sEquity = 0, manualInThisShift = 0, outT = 0;
+            salesRes.data?.forEach(s => {
+                const m = s.payment_method?.toUpperCase() || '';
+                if(m === 'CASH') sCash += Number(s.total_amount);
+                else if(m.includes('MPESA')) sMpesa += Number(s.total_amount);
+                else if(m === 'KCB') sKcb += Number(s.total_amount);
+                else if(m === 'EQUITY') sEquity += Number(s.total_amount);
+            });
+            transRes.data?.forEach(t => { t.type === 'IN' ? manualInThisShift += Number(t.amount) : outT += Number(t.amount); });
+
+            const openGrand = (Number(shift.opening_float_cash)||0) + (Number(shift.opening_float_mpesa)||0) + (Number(shift.opening_float_kcb)||0) + (Number(shift.opening_float_equity)||0);
+            const closeGrand = (Number(shift.closing_float_cash)||0) + (Number(shift.closing_float_mpesa)||0) + (Number(shift.closing_float_kcb)||0) + (Number(shift.closing_float_equity)||0);
+            const totalRevenue = sCash + sMpesa + sKcb + sEquity;
+            const expected = openGrand + totalRevenue + manualInThisShift - outT;
+            const variance = closeGrand - expected;
+
+            if (shift.status === 'OPEN') {
+                hTotals.cash += (Number(shift.opening_float_cash) || 0) + sCash;
+                hTotals.mpesa += (Number(shift.opening_float_mpesa) || 0) + sMpesa;
+                hTotals.kcb += (Number(shift.opening_float_kcb) || 0) + sKcb;
+                hTotals.equity += (Number(shift.opening_float_equity) || 0) + sEquity;
+                hTotals.manualIn += manualInThisShift;
+                hTotals.out += outT;
+            }
+
+            // Formatting Date with Full Year and Time Timeline
+            const opened = new Date(shift.opened_at);
+            const dateStr = opened.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+            const openTime = opened.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const closeTime = shift.closed_at ? new Date(shift.closed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+
+            return `
+                <tr>
+                    <td data-label="Cashier / Date & Time">
+                        <b style="color:white; font-size:1rem;">${profileMap[shift.cashier_id] || 'Unknown'}</b>
+                        <span class="status-badge ${shift.status === 'OPEN' ? 'live' : 'closed'}">${shift.status}</span><br>
+                        <div style="margin-top:5px; font-size: 0.8rem; color: #94a3b8;">
+                            <i class="far fa-calendar-alt"></i> ${dateStr}<br>
+                            <i class="far fa-clock"></i> ${openTime}${closeTime ? ` → ${closeTime}` : ' (Ongoing)'}
+                        </div>
+                    </td>
+                    <td data-label="Opening Floats">
+                        <div style="font-size:0.75rem; color: #cbd5e1">C: ${format(shift.opening_float_cash)} | M: ${format(shift.opening_float_mpesa)}</div>
+                        <div class="grand-total-box">Float: ${format(openGrand)}</div>
+                    </td>
+                    <td data-label="Transactions">
+                        <div style="color:#4ade80">+ Rev: ${format(totalRevenue)}</div>
+                        <div style="color:#f87171">- Out: ${format(outT)}</div>
+                    </td>
+                    <td data-label="Actual Closing">
+                        <div class="grand-total-box" style="color:#cbd5e1; border-color:#475569;">
+                            ${shift.status === 'OPEN' ? '<i class="fas fa-spinner fa-spin"></i> PENDING' : format(closeGrand)}
+                        </div>
+                    </td>
+                    <td class="variance-cell" data-label="Variance">
+                        ${shift.status === 'CLOSED' ? `<div class="variance-tag ${variance >= 0 ? 'v-pos' : 'v-neg'}">${variance > 0 ? '+' : ''}${format(variance)}</div>` : '<span style="color:#64748b">---</span>'}
+                    </td>
+                </tr>`;
+        });
+
+        tbody.innerHTML = (await Promise.all(rowPromises)).join('');
+        
+        document.getElementById('total-cash-only').innerText = `KES ${format(hTotals.cash)}`;
+        document.getElementById('total-mpesa-only').innerText = `KES ${format(hTotals.mpesa)}`;
+        document.getElementById('total-kcb-only').innerText = `KES ${format(hTotals.kcb)}`;
+        document.getElementById('total-equity-only').innerText = `KES ${format(hTotals.equity)}`;
+        document.getElementById('total-money-in').innerText = `KES ${format(hTotals.manualIn)}`;
+        document.getElementById('total-expenses').innerText = `KES ${format(hTotals.out)}`;
+        document.getElementById('total-combined').innerText = `KES ${format(hTotals.cash + hTotals.mpesa + hTotals.kcb + hTotals.equity - hTotals.out)}`;
+        document.getElementById('last-update').innerText = "Last sync: " + new Date().toLocaleTimeString();
+    }
+
+    document.getElementById('dateSearch').addEventListener('change', loadAuditData);
+    document.getElementById('nameSearch').addEventListener('input', loadAuditData);
+    loadAuditData();
+</script>
+</body>
+</html>

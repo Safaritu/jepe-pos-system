@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Shop | Mobile Cashier</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root { --accent: #00ffcc; --bg-dark: #1e293b; --expense: #ef4444; --income: #22c55e; --warning: #f59e0b; --bulk: #3b82f6; --primary: #2563eb; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { overflow-x: hidden; width: 100%; position: relative; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 10px; background-color: #e9ecef; color: #334155; line-height: 1.4; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); width: 100%; }
+        #fixed-opening-display { background: #f0f7ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; flex-wrap: wrap; gap: 10px; border-left: 6px solid #3b82f6; }
+        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        @media (min-width: 768px) { .summary-grid { grid-template-columns: repeat(4, 1fr); } }
+        .sum-card { background: #f8f9fa; padding: 12px; border-radius: 8px; border-top: 4px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .sum-card h4 { margin: 0; font-size: 0.7rem; color: #64748b; text-transform: uppercase; }
+        .sum-card .amt { font-size: 1.1rem; font-weight: 800; margin-top: 5px; color: #1e293b; }
+        .sum-card .opening-text { font-size: 0.65rem; font-weight: bold; color: #94a3b8; border-bottom: 1px solid #e2e8f0; margin-bottom: 5px; }
+        .shift-bar { display: flex; flex-direction: column; gap: 15px; background: #334155; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        @media (min-width: 600px) { .shift-bar { flex-direction: row; justify-content: space-between; align-items: center; } }
+        .btn-start { background: var(--income); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-close { background: var(--expense); color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-gas-hub { background: linear-gradient(135deg, #f59e0b, #d97706); color: black; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr; gap: 15px; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background-color: #f8f9fa; margin-bottom: 25px; }
+        @media (min-width: 768px) { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 16px; }
+        .price-warning { border: 2px solid var(--expense) !important; background-color: #fee2e2 !important; color: #b91c1c !important; }
+        .btn-sale { width: 100%; background-color: #2563eb; color: white; margin-top: 10px; font-weight: bold; border: none; border-radius: 5px; padding: 15px; cursor: pointer; font-size: 1rem; }
+        .tables-wrapper { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; }
+        @media (min-width: 1024px) { .tables-wrapper { grid-template-columns: 1.2fr 0.8fr; } }
+        .table-container { background: white; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 600px; }
+        th, td { border-bottom: 1px solid #f1f5f9; padding: 12px; text-align: left; }
+        th { background-color: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; }
+        .method-breakdown { font-size: 0.7rem; color: #64748b; display: block; line-height: 1.2; margin-bottom: 4px; }
+        .total-text { font-weight: 800; color: #1e293b; display: block; border-top: 1px solid #e2e8f0; padding-top: 4px; }
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center; padding: 10px; }
+        .modal-content { background:white; padding:20px; border-radius:12px; width:100%; max-width: 500px; color:#1e293b; max-height: 95vh; overflow-y: auto; }
+        .var-badge { font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .var-neg { color: var(--expense); background: #fee2e2; border: 1px solid #fecaca; }
+        .var-pos { color: var(--income); background: #dcfce7; border: 1px solid #bbf7d0; }
+        .btn-load-more { width: 100%; padding: 15px; margin-top: 15px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; cursor: pointer; font-weight: bold; color: #475569; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 style="margin:0 0 10px 0;">JEPE COMPANY LIMITED</h2>
+        
+        <div id="fixed-opening-display">
+            <div style="width: 100%; font-weight: 800; color: #0369a1; font-size: 0.75rem;">SHIFT OPENING FLOATS:</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.85rem; font-weight: 600;">
+                <span>Csh: <span id="fx-cash">0</span></span>
+                <span>Mps: <span id="fx-mpesa">0</span></span>
+                <span>KCB: <span id="fx-kcb">0</span></span>
+                <span>Eqt: <span id="fx-equity">0</span></span>
+            </div>
+        </div>
+
+        <div class="summary-grid">
+            <div class="sum-card" style="border-top-color: #10b981;">
+                <h4>CASH</h4>
+                <div class="opening-text">Op: <span id="open-cash">0</span></div>
+                <div class="amt" id="bal-cash">0.00</div>
+            </div>
+            <div class="sum-card" style="border-top-color: #22c55e;">
+                <h4>M-PESA</h4>
+                <div class="opening-text">Op: <span id="open-mpesa">0</span></div>
+                <div class="amt" id="bal-mpesa">0.00</div>
+            </div>
+            <div class="sum-card" style="border-top-color: #3b82f6;">
+                <h4>KCB</h4>
+                <div class="opening-text">Op: <span id="open-kcb">0</span></div>
+                <div class="amt" id="bal-kcb">0.00</div>
+            </div>
+            <div class="sum-card" style="border-top-color: #6366f1;">
+                <h4>EQUITY</h4>
+                <div class="opening-text">Op: <span id="open-equity">0</span></div>
+                <div class="amt" id="bal-equity">0.00</div>
+            </div>
+        </div>
+
+        <div class="shift-bar">
+            <div>
+                <span style="opacity: 0.8; font-size: 0.75rem;">System Status</span><br>
+                <strong>Shift:</strong> <span id="shift-status">Checking...</span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="indexgas.html" class="btn-gas-hub"><i class="fas fa-gas-pump"></i> GAS</a>
+                <div id="shift-actions"></div>
+                <button onclick="document.getElementById('transModal').style.display='flex'" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:10px; border-radius:6px; font-weight:bold; cursor:pointer;">
+                    <i class="fas fa-exchange-alt"></i> +/- Log
+                </button>
+            </div>
+        </div>
+
+        <form id="sale-form" class="grid-3">
+            <div style="grid-column: 1/-1; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size: 1rem;">New Sale</h3>
+                <div id="stock-display" style="font-size: 0.8rem; font-weight:bold; color:#2563eb;"></div>
+            </div>
+            <div>
+                <label style="font-size:0.8rem">Product</label>
+                <input type="text" id="pSearch" list="item-list" placeholder="Search..." required disabled>
+                <datalist id="item-list"></datalist>
+            </div>
+            <div>
+                <label style="font-size:0.8rem">Price</label>
+                <input type="number" id="pPrice" step="0.01" required disabled>
+                <div id="msp-display" style="font-size: 0.7rem; color:var(--expense); margin-top:4px;"></div>
+            </div>
+            <div>
+                <label style="font-size:0.8rem">Qty</label>
+                <input type="number" id="pQty" min="1" value="1" required disabled>
+            </div>
+            <div>
+                <label style="font-size:0.8rem">Method</label>
+                <select id="pMethod" disabled>
+                    <option value="Cash">Cash</option>
+                    <option value="Mpesa">M-Pesa</option>
+                    <option value="KCB">KCB</option>
+                    <option value="Equity">Equity</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.8rem">Total</label>
+                <input type="number" id="pTotal" readonly style="background:#f1f5f9; font-weight: bold;">
+            </div>
+            <button type="submit" id="sale-submit-btn" class="btn-sale" disabled>Complete Sale</button>
+        </form>
+
+        <div class="tables-wrapper">
+            <div>
+                <h3 style="font-size: 0.9rem; margin-bottom:10px;"><i class="fas fa-shopping-cart"></i> Recent Sales</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Item</th><th>Amt</th><th>Via</th><th>Time</th></tr></thead>
+                        <tbody id="sales-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h3 style="font-size: 0.9rem;"><i class="fas fa-file-invoice-dollar"></i> Money Logs</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Type</th><th>Amt</th><th>Acc</th><th>Note</th></tr></thead>
+                        <tbody id="trans-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 1rem;">Shift History & Variance</h3>
+                <button id="btnGenerateReport" style="background:#0f172a; color:white; border:none; padding:8px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 0.8rem;">
+                    <i class="fas fa-file-pdf"></i> Last Shift Report
+                </button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Opening Breakdown</th>
+                            <th>Logs (In/Out)</th>
+                            <th>Closing Breakdown</th>
+                            <th>Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+            <button id="btnLoadMore" class="btn-load-more">Load Older Shifts</button>
+        </div>
+    </div>
+
+    <div id="startDayModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Open New Shift</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><label>Cash</label><input type="number" id="floatCash" value="0"></div>
+                <div><label>M-Pesa</label><input type="number" id="floatMpesa" value="0"></div>
+                <div><label>KCB</label><input type="number" id="floatKcb" value="0"></div>
+                <div><label>Equity</label><input type="number" id="floatEquity" value="0"></div>
+            </div>
+            <button id="btnConfirmStart" class="btn-sale" style="background:var(--income)">Initialize Shift</button>
+            <button onclick="document.getElementById('startDayModal').style.display='none'" style="width:100%; background:none; border:none; color:gray; margin-top:10px; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="closeShiftModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Close Register</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><label>Actual Cash</label><input type="number" id="closeCashInput"></div>
+                <div><label>Actual Mps</label><input type="number" id="closeMpesaInput"></div>
+                <div><label>Actual KCB</label><input type="number" id="closeKcbInput"></div>
+                <div><label>Actual Eqt</label><input type="number" id="closeEquityInput"></div>
+            </div>
+            <div id="reconResultBox" style="display:none; margin-top:15px; padding:10px; background:#e2e8f0; border-radius:8px;"></div>
+            <div id="varianceNoteBox" style="display:none; margin-top:10px;">
+                <label style="color:var(--expense); font-weight:bold; font-size:0.8rem;">Note:</label>
+                <input type="text" id="closeNote">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="calculateShiftTotals()" style="flex:1; padding:12px; background:#334155; color:white; border:none; border-radius:8px;">Analyze</button>
+                <button id="btnConfirmClose" style="flex:1; padding:12px; background:var(--income); color:white; border:none; border-radius:8px; display:none;">End Shift</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="transModal" class="modal-overlay">
+        <div class="modal-content" style="background:#1e293b; color:white;">
+            <h3>Adjustment</h3>
+            <select id="transType" onchange="toggleTransferUI()" style="background:#334155; color:white;">
+                <option value="OUT">Money OUT</option>
+                <option value="IN">Money IN</option>
+                <option value="TRANSFER">Transfer</option>
+            </select>
+            <input type="number" id="transAmount" placeholder="Amount" style="margin-top:15px; background:#334155; color:white;">
+            <div style="margin-top:15px;">
+                <label style="color:#94a3b8; font-size:0.8rem;">From Account</label>
+                <select id="transMethod" style="background:#334155; color:white;">
+                    <option value="CASH">CASH</option>
+                    <option value="MPESA">MPESA</option>
+                    <option value="KCB">KCB</option>
+                    <option value="EQUITY">EQUITY</option>
+                </select>
+            </div>
+            <div id="transfer-extra" style="display:none; margin-top:15px; border:1px dashed #475569; padding:10px;">
+                <label style="color:#94a3b8; font-size:0.8rem;">To Account</label>
+                <select id="transDest" style="background:#334155; color:white;">
+                    <option value="MPESA">MPESA</option>
+                    <option value="CASH">CASH</option>
+                    <option value="KCB">KCB</option>
+                    <option value="EQUITY">EQUITY</option>
+                </select>
+            </div>
+            <input type="text" id="transNote" placeholder="Reason..." style="margin-top:15px; background:#334155; color:white;">
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="btnSaveTrans" style="flex:2; padding:15px; background:var(--accent); color:#0f172a; border:none; font-weight:bold; border-radius:8px;">Record</button>
+                <button onclick="document.getElementById('transModal').style.display='none'" style="flex:1; background:transparent; border:1px solid #475569; color:white; border-radius:8px;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        let currentShift = null;
+        let currentUser = null;
+        let inventory = [];
+        let selectedItem = null;
+        let activeBalances = { cash: 0, mpesa: 0, kcb: 0, equity: 0 };
+        let historyOffset = 0;
+        const historyLimit = 10;
+        let lastClosedShift = null;
+
+        async function init() {
+            const [userResponse, shiftResponse, prodResponse] = await Promise.all([
+                supabase.auth.getUser(),
+                supabase.from('shifts').select('*').eq('status', 'OPEN').maybeSingle(),
+                supabase.from('products').select('*')
+            ]);
+
+            if (!userResponse.data.user) return window.location.href = 'index.html';
+            currentUser = userResponse.data.user;
+            inventory = prodResponse.data || [];
+            document.getElementById('item-list').innerHTML = inventory.map(p => `<option value="${p.name}">`).join('');
+
+            if (shiftResponse.data) {
+                currentShift = shiftResponse.data;
+                renderActiveShiftUI(currentShift);
+                loadData();
+            } else {
+                renderClosedShiftUI();
+            }
+            loadShiftHistory(true);
+        }
+
+        function renderActiveShiftUI(shift) {
+            document.getElementById('fixed-opening-display').style.display = 'flex';
+            document.getElementById('fx-cash').innerText = Number(shift.opening_float_cash).toLocaleString();
+            document.getElementById('fx-mpesa').innerText = Number(shift.opening_float_mpesa).toLocaleString();
+            document.getElementById('fx-kcb').innerText = Number(shift.opening_float_kcb).toLocaleString();
+            document.getElementById('fx-equity').innerText = Number(shift.opening_float_equity).toLocaleString();
+
+            document.getElementById('shift-status').innerHTML = `<span style="color: #22c55e;">● ACTIVE</span>`;
+            document.getElementById('shift-actions').innerHTML = `<button class="btn-close" onclick="document.getElementById('closeShiftModal').style.display='flex'">Close</button>`;
+            
+            document.getElementById('open-cash').innerText = Number(shift.opening_float_cash).toLocaleString();
+            document.getElementById('open-mpesa').innerText = Number(shift.opening_float_mpesa).toLocaleString();
+            document.getElementById('open-kcb').innerText = Number(shift.opening_float_kcb).toLocaleString();
+            document.getElementById('open-equity').innerText = Number(shift.opening_float_equity).toLocaleString();
+
+            enableSales(true);
+        }
+
+        function renderClosedShiftUI() {
+            document.getElementById('shift-status').innerHTML = `<span style="color: #ef4444;">● CLOSED</span>`;
+            document.getElementById('shift-actions').innerHTML = `<button class="btn-start" onclick="document.getElementById('startDayModal').style.display='flex'">START DAY</button>`;
+            enableSales(false);
+        }
+
+        async function loadShiftHistory(clear = false) {
+            if(clear) { 
+                historyOffset = 0; 
+                document.getElementById('history-body').innerHTML = '<tr><td colspan="5" style="text-align:center">Loading history...</td></tr>'; 
+            }
+            
+            const { data: shifts } = await supabase.from('shifts')
+                .select('*')
+                .eq('cashier_id', currentUser.id)
+                .order('opened_at', { ascending: false })
+                .range(historyOffset, historyOffset + historyLimit - 1);
+            
+            if (clear) {
+                document.getElementById('history-body').innerHTML = '';
+                lastClosedShift = shifts?.find(s => s.status === 'CLOSED');
+            }
+            
+            if (shifts && shifts.length > 0) {
+                await renderHistory(shifts);
+                historyOffset += historyLimit;
+            } else if (historyOffset === 0) {
+                document.getElementById('history-body').innerHTML = '<tr><td colspan="5" style="text-align:center">No shifts found</td></tr>';
+            }
+        }
+
+        async function renderHistory(shifts) {
+            const tbody = document.getElementById('history-body');
+
+            for (const s of shifts) {
+                const endTime = s.closed_at || new Date().toISOString();
+                const { data: logs } = await supabase.from('store_transactions')
+                    .select('type, amount')
+                    .eq('user_id', currentUser.id)
+                    .gte('created_at', s.opened_at)
+                    .lte('created_at', endTime);
+
+                const moneyIn = logs?.filter(l => l.type === 'IN').reduce((a, b) => a + Number(b.amount), 0) || 0;
+                const moneyOut = logs?.filter(l => l.type === 'OUT').reduce((a, b) => a + Number(b.amount), 0) || 0;
+                
+                const o_cash = Number(s.opening_float_cash || 0);
+                const o_mpesa = Number(s.opening_float_mpesa || 0);
+                const o_kcb = Number(s.opening_float_kcb || 0);
+                const o_equity = Number(s.opening_float_equity || 0);
+                const o_total = o_cash + o_mpesa + o_kcb + o_equity;
+
+                const c_cash = Number(s.closing_float_cash || 0);
+                const c_mpesa = Number(s.closing_float_mpesa || 0);
+                const c_kcb = Number(s.closing_float_kcb || 0);
+                const c_equity = Number(s.closing_float_equity || 0);
+                const c_total = c_cash + c_mpesa + c_kcb + c_equity;
+
+                const variance = s.status === 'CLOSED' ? (c_total - (o_total + (moneyIn - moneyOut))) : 0;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><b>${new Date(s.opened_at).toLocaleDateString([], {day:'2-digit', month:'short'})}</b></td>
+                    <td>
+                        <span class="method-breakdown">Csh: ${o_cash.toLocaleString()} | Mps: ${o_mpesa.toLocaleString()}</span>
+                        <span class="method-breakdown">KCB: ${o_kcb.toLocaleString()} | Eqt: ${o_equity.toLocaleString()}</span>
+                        <span class="total-text">Total: ${o_total.toLocaleString()}</span>
+                    </td>
+                    <td><span style="color:green">+${moneyIn.toLocaleString()}</span> | <span style="color:red">-${moneyOut.toLocaleString()}</span></td>
+                    <td>
+                        ${s.status==='CLOSED' ? `
+                        <span class="method-breakdown">Csh: ${c_cash.toLocaleString()} | Mps: ${c_mpesa.toLocaleString()}</span>
+                        <span class="method-breakdown">KCB: ${c_kcb.toLocaleString()} | Eqt: ${c_equity.toLocaleString()}</span>
+                        <span class="total-text">Total: ${c_total.toLocaleString()}</span>
+                        ` : '<i>Active</i>'}
+                    </td>
+                    <td>
+                        ${s.status==='CLOSED' ? `<span class="var-badge ${variance >= 0 ? 'var-pos' : 'var-neg'}">${variance.toLocaleString()}</span>` : '---'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        async function loadData() {
+            if(!currentShift) return;
+            const [salesResponse, transResponse] = await Promise.all([
+                supabase.from('sales').select('*').eq('user_id', currentUser.id).gte('created_at', currentShift.opened_at),
+                supabase.from('store_transactions').select('*').eq('user_id', currentUser.id).gte('created_at', currentShift.opened_at)
+            ]);
+
+            const sales = salesResponse.data || [];
+            const trans = transResponse.data || [];
+
+            activeBalances = { 
+                cash: Number(currentShift.opening_float_cash || 0), 
+                mpesa: Number(currentShift.opening_float_mpesa || 0), 
+                kcb: Number(currentShift.opening_float_kcb || 0), 
+                equity: Number(currentShift.opening_float_equity || 0) 
+            };
+
+            sales.forEach(s => {
+                const m = s.payment_method.toLowerCase();
+                if(m.includes('cash')) activeBalances.cash += s.total_amount;
+                else if(m.includes('mpesa')) activeBalances.mpesa += s.total_amount;
+                else if(m === 'kcb') activeBalances.kcb += s.total_amount;
+                else if(m === 'equity') activeBalances.equity += s.total_amount;
+            });
+
+            trans.forEach(t => {
+                const amt = Number(t.amount);
+                const source = t.payment_method.toLowerCase();
+                if (t.type === 'IN') activeBalances[source] += amt;
+                else if (t.type === 'OUT') activeBalances[source] -= amt;
+                else if (t.type === 'TRANSFER') {
+                    const destPart = t.note?.split('TO:')[1]?.split('|')[0]?.trim().toLowerCase();
+                    activeBalances[source] -= amt;
+                    if(destPart && activeBalances.hasOwnProperty(destPart)) activeBalances[destPart] += amt;
+                }
+            });
+
+            document.getElementById('bal-cash').innerText = activeBalances.cash.toLocaleString();
+            document.getElementById('bal-mpesa').innerText = activeBalances.mpesa.toLocaleString();
+            document.getElementById('bal-kcb').innerText = activeBalances.kcb.toLocaleString();
+            document.getElementById('bal-equity').innerText = activeBalances.equity.toLocaleString();
+            
+            document.getElementById('sales-body').innerHTML = sales.slice(-10).reverse().map(s => `<tr><td>${s.item_name}</td><td>${s.total_amount.toLocaleString()}</td><td>${s.payment_method}</td><td>${new Date(s.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td></tr>`).join('');
+            document.getElementById('trans-body').innerHTML = trans.slice(-10).reverse().map(t => `<tr><td style="color:${t.type==='IN'?'green':'red'}">${t.type}</td><td>${t.amount.toLocaleString()}</td><td>${t.payment_method}</td><td>${t.note || '-'}</td></tr>`).join('');
+        }
+
+        function updateTotals() {
+            const price = parseFloat(document.getElementById('pPrice').value) || 0;
+            const qty = parseFloat(document.getElementById('pQty').value) || 1;
+            document.getElementById('pTotal').value = (price * qty).toFixed(2);
+        }
+
+        document.getElementById('pPrice').oninput = updateTotals;
+        document.getElementById('pQty').oninput = updateTotals;
+        document.getElementById('pSearch').oninput = (e) => {
+            selectedItem = inventory.find(i => i.name === e.target.value);
+            if(selectedItem) { 
+                document.getElementById('stock-display').innerText = `Stock: ${selectedItem.stock_quantity}`; 
+                document.getElementById('msp-display').innerText = `Min: KES ${selectedItem.min_price || 0}`;
+                document.getElementById('pPrice').value = selectedItem.unit_price;
+                updateTotals();
+            }
+        };
+
+        document.getElementById('sale-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('sale-submit-btn');
+            btn.disabled = true;
+            const { error } = await supabase.from('sales').insert({ 
+                item_name: selectedItem.name, 
+                quantity: document.getElementById('pQty').value, 
+                unit_price: document.getElementById('pPrice').value, 
+                total_amount: parseFloat(document.getElementById('pTotal').value), 
+                payment_method: document.getElementById('pMethod').value, 
+                user_id: currentUser.id 
+            });
+            if(!error) location.reload(); else btn.disabled = false;
+        };
+
+        window.calculateShiftTotals = () => {
+            const totalExpected = activeBalances.cash + activeBalances.mpesa + activeBalances.kcb + activeBalances.equity;
+            const actualTotal = (parseFloat(document.getElementById('closeCashInput').value) || 0) + (parseFloat(document.getElementById('closeMpesaInput').value) || 0) + (parseFloat(document.getElementById('closeKcbInput').value) || 0) + (parseFloat(document.getElementById('closeEquityInput').value) || 0);
+            const diff = actualTotal - totalExpected;
+            const display = document.getElementById('reconResultBox');
+            display.style.display = 'block';
+            display.innerHTML = `System Expected: ${totalExpected.toLocaleString()}<br>Actual Entered: ${actualTotal.toLocaleString()}<br><b style="color:${diff<0?'red':'green'}">Variance: ${diff.toLocaleString()}</b>`;
+            document.getElementById('varianceNoteBox').style.display = diff !== 0 ? 'block' : 'none';
+            document.getElementById('btnConfirmClose').style.display = 'block';
+        };
+
+        document.getElementById('btnConfirmClose').onclick = async () => {
+            const { error } = await supabase.from('shifts').update({ 
+                status: 'CLOSED', closed_at: new Date().toISOString(), 
+                closing_float_cash: parseFloat(document.getElementById('closeCashInput').value) || 0,
+                closing_float_mpesa: parseFloat(document.getElementById('closeMpesaInput').value) || 0,
+                closing_float_kcb: parseFloat(document.getElementById('closeKcbInput').value) || 0,
+                closing_float_equity: parseFloat(document.getElementById('closeEquityInput').value) || 0,
+                closing_notes: document.getElementById('closeNote').value 
+            }).eq('id', currentShift.id);
+            if (!error) location.reload();
+        };
+
+        document.getElementById('btnConfirmStart').onclick = async function() {
+            this.disabled = true;
+            const { error } = await supabase.from('shifts').insert([{
+                cashier_id: currentUser.id, status: 'OPEN',
+                opening_float_cash: parseFloat(document.getElementById('floatCash').value) || 0,
+                opening_float_mpesa: parseFloat(document.getElementById('floatMpesa').value) || 0,
+                opening_float_kcb: parseFloat(document.getElementById('floatKcb').value) || 0,
+                opening_float_equity: parseFloat(document.getElementById('floatEquity').value) || 0,
+                opened_at: new Date().toISOString()
+            }]);
+            if (!error) location.reload(); else this.disabled = false;
+        };
+
+        window.toggleTransferUI = () => { document.getElementById('transfer-extra').style.display = document.getElementById('transType').value === 'TRANSFER' ? 'block' : 'none'; };
+
+        document.getElementById('btnSaveTrans').onclick = async () => {
+            const amt = parseFloat(document.getElementById('transAmount').value);
+            const type = document.getElementById('transType').value;
+            const source = document.getElementById('transMethod').value;
+            const dest = document.getElementById('transDest').value;
+            const finalNote = type === 'TRANSFER' ? `TRANSFER TO: ${dest} | ${document.getElementById('transNote').value}` : document.getElementById('transNote').value;
+            if(!amt || amt <= 0) return alert("Valid amount required.");
+            const { error } = await supabase.from('store_transactions').insert([{ type: type, amount: amt, payment_method: source, note: finalNote, user_id: currentUser.id }]);
+            if(!error) location.reload();
+        };
+
+        document.getElementById('btnGenerateReport').onclick = async () => {
+            if(!lastClosedShift) return alert("No closed shift found.");
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("JEPE COMPANY LIMITED - SHIFT REPORT", 105, 20, { align: "center" });
+            doc.autoTable({
+                startY: 30,
+                head: [['Account', 'Opening Float', 'Closing Actual']],
+                body: [
+                    ['Cash', lastClosedShift.opening_float_cash.toLocaleString(), lastClosedShift.closing_float_cash.toLocaleString()],
+                    ['M-Pesa', lastClosedShift.opening_float_mpesa.toLocaleString(), lastClosedShift.closing_float_mpesa.toLocaleString()],
+                    ['KCB Bank', lastClosedShift.opening_float_kcb.toLocaleString(), lastClosedShift.closing_float_kcb.toLocaleString()],
+                    ['Equity Bank', lastClosedShift.opening_float_equity.toLocaleString(), lastClosedShift.closing_float_equity.toLocaleString()]
+                ]
+            });
+            doc.save(`Shift_Report_${new Date().getTime()}.pdf`);
+        };
+
+        document.getElementById('btnLoadMore').onclick = () => loadShiftHistory(false);
+        function enableSales(s) { document.querySelectorAll('#sale-form input, #sale-form select, #sale-submit-btn').forEach(el => el.disabled = !s); }
+
+        init();
+    </script>
+</body>
+</html>

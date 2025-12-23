@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Shop | Inventory & Profit</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: #1e293b; 
+            --accent: #00ffcc; 
+            --text-main: #f8fafc; 
+            --sidebar-width: 240px; 
+            --danger: #ef4444;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-main); overflow-x: hidden; }
+        
+        /* 1. RESPONSIVE SIDEBAR */
+        .sidebar { 
+            width: var(--sidebar-width); background: #020617; height: 100vh; position: fixed; 
+            left: 0; top: 0; padding: 20px; border-right: 1px solid #334155; z-index: 1000; transition: 0.3s;
+        }
+        
+        .main-content { 
+            margin-left: var(--sidebar-width); padding: 20px; 
+            width: calc(100% - var(--sidebar-width)); transition: 0.3s;
+        }
+
+        /* Mobile Adjustments for Sidebar */
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; width: 100%; }
+            .mobile-nav-toggle { display: block !important; }
+        }
+
+        .mobile-nav-toggle { 
+            display: none; background: var(--accent); color: #000; border: none; 
+            padding: 10px; border-radius: 5px; margin-bottom: 15px; font-weight: bold;
+        }
+
+        .nav-item { display: flex; align-items: center; padding: 12px; color: #94a3b8; text-decoration: none; border-radius: 8px; margin-bottom: 10px; }
+        .nav-item.active { background: #111d2e; color: var(--accent); }
+
+        /* 2. ANALYTICS (Simple Terms) */
+        .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 25px; }
+        .ana-card { background: var(--card-bg); padding: 15px; border-radius: 12px; border-top: 3px solid var(--accent); }
+        .ana-card h4 { color: #94a3b8; font-size: 0.6rem; text-transform: uppercase; }
+        .ana-card .val { font-size: 1.1rem; font-weight: bold; margin: 5px 0; }
+        .ana-card .explain { font-size: 0.6rem; color: #64748b; }
+
+        /* 3. FORM DESIGN (One column on mobile) */
+        .form-container { background: var(--card-bg); padding: 20px; border-radius: 12px; margin-bottom: 25px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        input, select { padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 16px; width: 100%; }
+        .btn-add { background: var(--accent); color: #000; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
+
+        /* 4. TABLE (Slide sideways to see more) */
+        .table-wrapper { background: var(--card-bg); border-radius: 12px; overflow-x: auto; border: 1px solid #334155; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; } /* Ensures names don't squash */
+        th { text-align: left; padding: 12px; background: #020617; color: var(--accent); font-size: 0.7rem; }
+        td { padding: 15px 12px; border-bottom: 1px solid #334155; font-size: 0.85rem; }
+
+        .stock-low { color: #f87171; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar" id="sidebar">
+        <h2 style="color:var(--accent); margin-bottom:30px;">Smart Shop</h2>
+        <a href="admin.html" class="nav-item"><i class="fas fa-chart-line"></i> Dashboard</a>
+        <a href="inventory.html" class="nav-item active"><i class="fas fa-boxes"></i> Inventory</a>
+        <a href="suppliers.html" class="nav-item"><i class="fas fa-truck"></i> Suppliers</a>
+        <button class="btn-add" style="background:#ef4444; color:white;" onclick="document.getElementById('sidebar').classList.remove('active')">Close Menu</button>
+    </nav>
+
+    <main class="main-content">
+        <button class="mobile-nav-toggle" onclick="document.getElementById('sidebar').classList.add('active')">
+            <i class="fas fa-bars"></i> Menu
+        </button>
+
+        <h1 style="font-size: 1.3rem; margin-bottom: 15px;">Inventory Profit Hub</h1>
+
+        <div class="analytics-grid">
+            <div class="ana-card">
+                <h4>Stock Value</h4>
+                <div class="val" id="total-inv-cost">KES 0</div>
+                <div class="explain">Money tied up in items</div>
+            </div>
+            <div class="ana-card">
+                <h4>Total Payout</h4>
+                <div class="val" id="total-est-payout">KES 0</div>
+                <div class="explain">Money if all sold</div>
+            </div>
+            <div class="ana-card" style="border-top-color: #10b981;">
+                <h4>Est. Profit</h4>
+                <div class="val" id="total-est-profit">KES 0</div>
+                <div class="explain">Expected pure gain</div>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h3 style="font-size: 0.9rem; margin-bottom: 10px;">Add New Stock Item</h3>
+            <form id="prodForm" class="form-grid">
+                <input type="text" id="pName" placeholder="Product Name" required>
+                <select id="pType">
+                    <option value="General">Category</option>
+                    <option value="Original">Original</option>
+                    <option value="Copy">Copy</option>
+                </select>
+                <select id="pSupplier"><option value="">Select Supplier</option></select>
+                <input type="number" id="pCost" placeholder="Cost (Buy Price)" required>
+                <input type="number" id="pPrice" placeholder="Sell Price" required>
+                <input type="number" id="pMinPrice" placeholder="Min (Lowest) Price" required>
+                <input type="number" id="pStock" placeholder="Quantity" required>
+                <button type="submit" class="btn-add">Save to Inventory</button>
+            </form>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 0.7rem; margin-bottom: 5px;">Swipe table left/right to see all details →</p>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Item Name</th>
+                        <th>Stock</th>
+                        <th>Buy / Sell</th>
+                        <th>Profit</th>
+                        <th>Delete</th>
+                    </tr>
+                </thead>
+                <tbody id="invBody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        // Filters out specific system items
+        const blockedItems = ["Pro Gas", "Internal Audit", "Test Fee"];
+
+        async function loadSuppliers() {
+            const { data } = await supabase.from('suppliers').select('id, name');
+            const select = document.getElementById('pSupplier');
+            if (data) {
+                select.innerHTML = '<option value="">Select Supplier</option>' + 
+                    data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            }
+        }
+
+        async function loadInventory() {
+            const { data: products } = await supabase.from('products').select('*, suppliers(name)').order('name');
+            const tbody = document.getElementById('invBody');
+            
+            let totalCost = 0;
+            let totalPayout = 0;
+
+            const visibleItems = products?.filter(p => !blockedItems.includes(p.name)) || [];
+
+            tbody.innerHTML = visibleItems.map(p => {
+                const itemTotalCost = (p.cost_price || 0) * p.stock_quantity;
+                const itemTotalPayout = (p.unit_price || 0) * p.stock_quantity;
+                const profit = itemTotalPayout - itemTotalCost;
+
+                totalCost += itemTotalCost;
+                totalPayout += itemTotalPayout;
+
+                return `
+                    <tr>
+                        <td>
+                            <div style="font-weight:bold; color:white;">${p.name}</div>
+                            <div style="font-size:0.65rem; color:#94a3b8;">${p.product_type}</div>
+                        </td>
+                        <td><span class="${p.stock_quantity < 5 ? 'stock-low' : ''}">${p.stock_quantity}</span></td>
+                        <td><small>${p.cost_price} / ${p.unit_price}</small></td>
+                        <td style="color:#10b981; font-weight:bold;">+${profit.toLocaleString()}</td>
+                        <td>
+                            <i class="fas fa-trash" style="color:#ef4444; cursor:pointer;" onclick="delProd('${p.id}')"></i>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('total-inv-cost').innerText = `KES ${totalCost.toLocaleString()}`;
+            document.getElementById('total-est-payout').innerText = `KES ${totalPayout.toLocaleString()}`;
+            document.getElementById('total-est-profit').innerText = `KES ${(totalPayout - totalCost).toLocaleString()}`;
+        }
+
+        document.getElementById('prodForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const { error } = await supabase.from('products').insert({
+                name: document.getElementById('pName').value,
+                product_type: document.getElementById('pType').value,
+                supplier_id: document.getElementById('pSupplier').value || null,
+                cost_price: parseFloat(document.getElementById('pCost').value),
+                unit_price: parseFloat(document.getElementById('pPrice').value),
+                min_price: parseFloat(document.getElementById('pMinPrice').value),
+                stock_quantity: parseInt(document.getElementById('pStock').value)
+            });
+            if (error) alert(error.message);
+            else { e.target.reset(); loadInventory(); }
+        };
+
+        window.delProd = async (id) => {
+            if(confirm("Remove item?")) {
+                await supabase.from('products').delete().eq('id', id);
+                loadInventory();
+            }
+        };
+
+        loadSuppliers();
+        loadInventory();
+    </script>
+</body>
+</html>

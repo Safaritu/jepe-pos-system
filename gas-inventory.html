@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Shop | Gas Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: #1e293b; 
+            --accent: #00ffcc; 
+            --text-main: #f8fafc; 
+            --sidebar-width: 240px; 
+            --danger: #ef4444; 
+            --warning: #f59e0b; 
+            --info: #3b82f6; 
+        }
+
+        /* 1. MOBILE SCREEN LOCK - Prevents sliding sideways */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body { 
+            width: 100%; 
+            overflow-x: hidden; 
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        /* 2. RESPONSIVE SIDEBAR LOGIC */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            background: #020617; 
+            height: 100vh; 
+            position: fixed; 
+            padding: 20px; 
+            border-right: 1px solid #334155; 
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .main-content { 
+            margin-left: var(--sidebar-width); 
+            padding: 20px; 
+            width: calc(100% - var(--sidebar-width)); 
+            min-height: 100vh;
+            display: block;
+        }
+
+        /* Mobile Adjustments for Sidebar */
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; width: 100%; padding: 15px; }
+        }
+
+        /* 3. ALERT & HEADERS */
+        #globalAlert { 
+            display: none; background: rgba(239, 68, 68, 0.15); 
+            border-left: 5px solid var(--danger); padding: 15px; 
+            margin-bottom: 20px; border-radius: 8px; font-size: 0.9rem;
+        }
+
+        /* 4. SUMMARY BANNER (Scrollable on mobile) */
+        .banner-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 25px;
+        }
+
+        .summary-banner { 
+            display: flex; 
+            gap: 15px; 
+            min-width: 600px; /* Forces swipe on small screens */
+        }
+
+        .summary-card { 
+            flex: 1; background: #020617; padding: 15px; 
+            border-radius: 10px; border-top: 3px solid var(--accent); text-align: center; 
+        }
+        .summary-card h4 { color: #94a3b8; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 5px; }
+        .summary-card .total { font-size: 1.5rem; font-weight: bold; }
+
+        /* 5. RESTOCK FORM (Stacked on mobile, Grid on desktop) */
+        .restock-section { 
+            background: var(--card-bg); padding: 20px; border-radius: 12px; 
+            border: 1px solid var(--accent); margin-bottom: 30px; 
+            display: grid; grid-template-columns: 1fr; gap: 15px; 
+        }
+
+        @media (min-width: 768px) {
+            .restock-section { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); align-items: end; }
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 0.75rem; color: #94a3b8; }
+        .form-control { background: #0f172a; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; font-size: 16px; }
+
+        /* 6. MODES TOGGLE */
+        .toggle-container { display: flex; background: #020617; padding: 4px; border-radius: 8px; border: 1px solid #334155; }
+        .toggle-btn { flex: 1; padding: 8px 4px; text-align: center; font-size: 0.65rem; cursor: pointer; border-radius: 6px; color: #64748b; font-weight: bold; }
+        .toggle-btn.active { background: var(--accent); color: #000; }
+        #modeExchange.active { background: var(--info); color: white; }
+
+        /* 7. INVENTORY GRID */
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        
+        .gas-card { 
+            background: var(--card-bg); border-radius: 12px; padding: 20px; 
+            border: 1px solid #334155; position: relative; 
+            overflow: hidden; /* Contains internal elements */
+        }
+        
+        .mismatch-label { background: var(--warning); color: black; font-size: 0.6rem; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+        .stock-row { display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding: 10px 0; font-size: 0.9rem; }
+        
+        .card-actions { margin-top: 20px; display: flex; gap: 10px; }
+        .btn-small { flex: 1; padding: 12px; border-radius: 8px; border: none; font-size: 0.8rem; cursor: pointer; font-weight: bold; }
+
+        .btn-add { background: var(--accent); color: #000; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+
+        .mobile-nav-btn {
+            display: none; background: var(--accent); color: #000; border: none; padding: 10px; border-radius: 5px; margin-bottom: 15px;
+        }
+        @media (max-width: 900px) { .mobile-nav-btn { display: inline-block; } }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar" id="sidebar">
+        <h2 style="color:var(--accent); margin-bottom: 20px;">Smart Shop</h2>
+        <a href="admin.html" style="color:#94a3b8; text-decoration:none; display:block; padding:12px;">Dashboard</a>
+        <a href="gas-inventory.html" style="color:var(--accent); text-decoration:none; display:block; padding:12px; background: rgba(0,255,204,0.1); border-radius: 8px;">Gas Inventory</a>
+        <a href="suppliers.html" style="color:#94a3b8; text-decoration:none; display:block; padding:12px;">Suppliers</a>
+    </nav>
+
+    <main class="main-content">
+        <button class="mobile-nav-btn" onclick="document.getElementById('sidebar').classList.toggle('active')">
+            <i class="fas fa-bars"></i> Menu
+        </button>
+
+        <h1 style="margin-bottom: 20px; font-size: 1.5rem;">Gas Stock & Reconciliation</h1>
+
+        <div id="globalAlert">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div><strong>System Note:</strong> <span id="lowStockText"></span></div>
+        </div>
+
+        <div class="banner-wrapper">
+            <div class="summary-banner">
+                <div class="summary-card"><h4>Total 6KG</h4><div class="total" id="total6">0</div></div>
+                <div class="summary-card"><h4>Total 13KG</h4><div class="total" id="total13">0</div></div>
+                <div class="summary-card"><h4>Total 50KG</h4><div class="total" id="total50">0</div></div>
+            </div>
+        </div>
+
+        <section class="restock-section">
+            <div class="form-group" style="grid-column: span 1;">
+                <label>Action</label>
+                <div class="toggle-container">
+                    <div id="modeRefill" class="toggle-btn active" onclick="setMode('refill')">REFILL</div>
+                    <div id="modeExchange" class="toggle-btn" onclick="setMode('exchange')">SWAP</div>
+                    <div id="modePurchase" class="toggle-btn" onclick="setMode('purchase')">NEW</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Supplier</label>
+                <select id="supplierSelect" class="form-control"><option value="">Loading...</option></select>
+            </div>
+            <div class="form-group">
+                <label>Brand</label>
+                <input type="text" id="gasBrand" class="form-control" placeholder="e.g. Supa">
+            </div>
+            <div class="form-group">
+                <label>Size</label>
+                <select id="sizeSelect" class="form-control">
+                    <option value="6">6 KG</option>
+                    <option value="13">13 KG</option>
+                    <option value="50">50 KG</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Qty</label>
+                <input type="number" id="restockQty" class="form-control" value="0">
+            </div>
+            <div class="form-group">
+                <button class="btn-add" id="recordBtn" onclick="handleRestock()">Record</button>
+            </div>
+        </section>
+
+        <div class="inventory-grid" id="inventoryContainer"></div>
+    </main>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        let restockMode = 'refill';
+        let allData = [];
+
+        window.setMode = (m) => {
+            restockMode = m;
+            document.getElementById('modeRefill').classList.toggle('active', m === 'refill');
+            document.getElementById('modeExchange').classList.toggle('active', m === 'exchange');
+            document.getElementById('modePurchase').classList.toggle('active', m === 'purchase');
+        };
+
+        async function init() {
+            await loadSuppliers();
+            await loadData();
+        }
+
+        async function loadSuppliers() {
+            const select = document.getElementById('supplierSelect');
+            const { data, error } = await supabase.from('suppliers').select('id, name').order('name');
+            if(error) return;
+            select.innerHTML = '<option value="">Select Supplier</option>' + 
+                data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        async function loadData() {
+            const { data, error } = await supabase.from('gas_stock').select('*, suppliers!inner(name)').order('brand_name');
+            if(error) {
+                const { data: fallback } = await supabase.from('gas_stock').select('*').order('brand_name');
+                allData = fallback || [];
+            } else {
+                allData = data || [];
+            }
+            render(allData); 
+        }
+
+        function render(list) {
+            const container = document.getElementById('inventoryContainer');
+            const totals = { 6: 0, 13: 0, 50: 0 };
+
+            container.innerHTML = list.map(item => {
+                totals[item.size_kg] += (item.full_stock || 0);
+                const mismatch = item.empties_out_at_supplier || 0;
+
+                return `
+                    <div class="gas-card">
+                        ${mismatch > 0 ? `<div class="mismatch-label">PENDING: ${mismatch} FROM SUPPLIER</div>` : ''}
+                        <button class="btn-delete" style="position:absolute; right:15px; top:15px; background:none; border:none; color:#475569;" onclick="deleteItem('${item.id}')"><i class="fas fa-trash"></i></button>
+                        <h2 style="font-size:1.1rem; margin-bottom:5px;">${item.brand_name.toUpperCase()} ${item.size_kg}KG</h2>
+                        <span style="font-size:0.75rem; color:var(--secondary)"><i class="fas fa-truck"></i> ${item.suppliers?.name || 'Assigned Supplier'}</span>
+                        
+                        <div class="stock-row" style="margin-top:15px;"><span>Full Stock</span><b style="color:var(--accent)">${item.full_stock}</b></div>
+                        <div class="stock-row"><span>Empty Stock</span><b>${item.empty_stock}</b></div>
+                        <div class="stock-row" style="background: rgba(245, 158, 11, 0.05)">
+                            <span>Sent Out</span>
+                            <b style="color:var(--warning)">${mismatch}</b>
+                        </div>
+                        
+                        <div class="card-actions">
+                            <button class="btn-small" style="background:#f59e0b; color:black" 
+                                onclick="sendToSupplier('${item.id}', ${item.empty_stock})">Dispatch</button>
+                            <button class="btn-small" style="border:1px solid var(--accent); background:none; color:var(--accent)" onclick="updatePrice('${item.id}')">Price</button>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            document.getElementById('total6').innerText = totals[6];
+            document.getElementById('total13').innerText = totals[13];
+            document.getElementById('total50').innerText = totals[50];
+        }
+
+        // --- ALL ORIGINAL DATA LOGIC PRESERVED BELOW ---
+        window.sendToSupplier = async (id, currentInShop) => {
+            const qty = prompt(`How many empties are being sent? (Available: ${currentInShop})`);
+            if (qty && !isNaN(qty)) {
+                const moveQty = parseInt(qty);
+                if (moveQty > currentInShop) return alert("Not enough empties!");
+                const item = allData.find(i => i.id === id);
+                await supabase.from('gas_stock').update({
+                    empty_stock: item.empty_stock - moveQty,
+                    empties_out_at_supplier: (item.empties_out_at_supplier || 0) + moveQty
+                }).eq('id', id);
+                loadData();
+            }
+        };
+
+        window.handleRestock = async () => {
+            const brand = document.getElementById('gasBrand').value.trim().toLowerCase();
+            const supplierId = document.getElementById('supplierSelect').value;
+            const size = parseInt(document.getElementById('sizeSelect').value);
+            const qty = parseInt(document.getElementById('restockQty').value);
+            if(!brand || qty <= 0 || !supplierId) return alert("Complete all details.");
+
+            const { data: existing } = await supabase.from('gas_stock').select('*').eq('brand_name', brand).eq('size_kg', size).maybeSingle();
+
+            if (existing) {
+                let updateData = { full_stock: existing.full_stock + qty, supplier_id: supplierId };
+                if (restockMode === 'refill') {
+                    updateData.empties_out_at_supplier = Math.max(0, (existing.empties_out_at_supplier || 0) - qty);
+                } else if (restockMode === 'exchange') {
+                    if (qty > existing.empty_stock) return alert("Not enough empties in shop for swap!");
+                    updateData.empty_stock = existing.empty_stock - qty;
+                }
+                await supabase.from('gas_stock').update(updateData).eq('id', existing.id);
+            } else {
+                await supabase.from('gas_stock').insert({ brand_name: brand, size_kg: size, full_stock: qty, empty_stock: 0, supplier_id: supplierId, empties_out_at_supplier: 0 });
+            }
+            alert("Inventory updated!");
+            loadData();
+        };
+
+        window.deleteItem = async (id) => { if(confirm("Delete item?")) { await supabase.from('gas_stock').delete().eq('id', id); loadData(); } };
+        window.updatePrice = (id) => { alert("Price updates coming soon."); };
+
+        init();
+    </script>
+</body>
+</html>

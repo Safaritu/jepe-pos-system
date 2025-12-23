@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shop | Sales History</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 15px; margin-bottom: 20px; }
+        .search-box { margin-bottom: 20px; display: flex; gap: 10px; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; flex-grow: 1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #007bff; color: white; padding: 12px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .method-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; background: #e9ecef; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2><i class="fas fa-history"></i> Full Sales History</h2>
+            <button onclick="window.close()" style="cursor:pointer; background:#6c757d; color:white; border:none; padding:8px 15px; border-radius:5px;">Close</button>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search by item name or method...">
+            <input type="date" id="dateInput">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Method</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+                <tr><td colspan="5">Loading history...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { supabase } from './cashier.js';
+
+        async function loadHistory() {
+            const { data, error } = await supabase
+                .from('sale_items')
+                .select(`*, sales(created_at)`)
+                .order('id', { ascending: false });
+
+            if (error) return console.error(error);
+            renderTable(data);
+
+            document.getElementById('searchInput').oninput = () => filterData(data);
+            document.getElementById('dateInput').onchange = () => filterData(data);
+        }
+
+        function renderTable(items) {
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = items.map(item => `
+                <tr>
+                    <td>${new Date(item.sales.created_at).toLocaleString()}</td>
+                    <td><strong>${item.product_name}</strong></td>
+                    <td>${item.quantity}</td>
+                    <td>KES ${(item.unit_price * item.quantity).toFixed(2)}</td>
+                    <td><span class="method-badge">${item.payment_method}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function filterData(data) {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const date = document.getElementById('dateInput').value;
+            const filtered = data.filter(item => {
+                const matchesTerm = item.product_name.toLowerCase().includes(term) || item.payment_method.toLowerCase().includes(term);
+                const matchesDate = !date || item.sales.created_at.startsWith(date);
+                return matchesTerm && matchesDate;
+            });
+            renderTable(filtered);
+        }
+
+        loadHistory();
+    </script>
+</body>
+</html>

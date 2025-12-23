@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Audit Log | Comprehensive Price Integrity</title>
+    <style>
+        :root { 
+            --bg: #0b0f1a; --card: #161b2c; --accent: #00ffcc; 
+            --text: #f8fafc; --danger: #ef4444; --warning: #f59e0b;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 40px; margin: 0; }
+        
+        .summary-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent); }
+        .stat-card.loss { border-left-color: var(--danger); }
+        .stat-label { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; margin-top: 5px; }
+
+        .audit-table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2d3748; }
+        th { color: var(--accent); text-transform: uppercase; font-size: 0.75rem; background: #1a2035; }
+        .badge { background: var(--danger); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .diff-loss { color: var(--danger); font-weight: bold; }
+        .diff-gain { color: var(--accent); font-weight: bold; }
+        .price-info { color: #94a3b8; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <h2 style="color: var(--accent); margin: 0 0 20px 0;">Security Audit Log</h2>
+
+    <div class="summary-container">
+        <div class="stat-card">
+            <div class="stat-label">Override Incidents</div>
+            <div id="totalIncidents" class="stat-value">0</div>
+        </div>
+        <div class="stat-card loss">
+            <div class="stat-label">Total Revenue Gap</div>
+            <div id="totalLoss" class="stat-value">KES 0</div>
+        </div>
+    </div>
+
+    <table class="audit-table">
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Item & Cashier</th>
+                <th>Std / Min Price</th>
+                <th>Sold Price</th>
+                <th>Difference</th>
+                <th>Override Reason</th>
+            </tr>
+        </thead>
+        <tbody id="auditBody">
+            <tr><td colspan="6" style="text-align:center; padding: 40px;">Synchronizing inventory data...</td></tr>
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        async function loadAudit() {
+            try {
+                // 1. Fetch Sales with PIN notes
+                const { data: sales, error: salesError } = await supabase
+                    .from('sales')
+                    .select('*')
+                    .not('notes', 'is', null)
+                    .neq('notes', '')
+                    .order('created_at', { ascending: false });
+
+                if (salesError) throw salesError;
+
+                // 2. Fetch General Products
+                const { data: genProducts } = await supabase
+                    .from('products')
+                    .select('name, unit_price, min_price');
+
+                // 3. Fetch Gas Stock
+                const { data: gasStock } = await supabase
+                    .from('gas_stock')
+                    .select('brand_name, size_kg, selling_price, min_price');
+
+                // 4. Create a unified Lookup Map
+                const priceLookup = {};
+
+                // Map general items (e.g., laptop)
+                genProducts?.forEach(p => {
+                    priceLookup[p.name.toUpperCase().trim()] = {
+                        std: parseFloat(p.unit_price) || 0,
+                        min: parseFloat(p.min_price) || 0
+                    };
+                });
+
+                // Map gas items
+                gasStock?.forEach(g => {
+                    const key = `${g.brand_name.toUpperCase()} ${g.size_kg}KG`;
+                    priceLookup[key] = {
+                        std: parseFloat(g.selling_price) || 0,
+                        min: parseFloat(g.min_price) || 0
+                    };
+                });
+
+                let totalLossValue = 0;
+                const tbody = document.getElementById('auditBody');
+
+                if (!sales || sales.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No overrides found.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = sales.map(sale => {
+                    // Try to find price using clean name
+                    const rawName = sale.item_name.toUpperCase();
+                    const cleanGasName = rawName
+                        .replace('GAS: ', '')
+                        .replace(' (REFILL)', '')
+                        .replace(' (NEW CYLINDER)', '')
+                        .trim();
+
+                    // Check for gas name match first, then full name match (for general items)
+                    const pricing = priceLookup[cleanGasName] || priceLookup[rawName.trim()] || { std: 0, min: 0 };
+                    
+                    const soldPrice = sale.unit_price || 0;
+                    const difference = pricing.std - soldPrice;
+                    
+                    if (difference > 0) totalLossValue += difference;
+
+                    return `
+                        <tr>
+                            <td>
+                                <b>${new Date(sale.created_at).toLocaleDateString()}</b><br>
+                                <span style="font-size: 0.75rem; color: #64748b;">${new Date(sale.created_at).toLocaleTimeString()}</span>
+                            </td>
+                            <td>
+                                <b>${sale.item_name}</b><br>
+                                <span style="font-size:0.7rem; color:#64748b;">Cashier ID: ${sale.user_id ? sale.user_id.substring(0, 8) : 'System'}</span>
+                            </td>
+                            <td>
+                                <div class="price-info">Std: KES ${pricing.std.toLocaleString()}</div>
+                                <div class="price-info">Min: KES ${pricing.min.toLocaleString()}</div>
+                            </td>
+                            <td style="font-weight: bold; color: var(--accent);">
+                                KES ${soldPrice.toLocaleString()}
+                            </td>
+                            <td class="${difference > 0 ? 'diff-loss' : 'diff-gain'}">
+                                ${difference > 0 ? '-' : '+'} KES ${Math.abs(difference).toLocaleString()}
+                            </td>
+                            <td>
+                                <span class="badge">PIN USED</span> 
+                                <span style="font-size: 0.85rem;">${sale.notes}</span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                document.getElementById('totalIncidents').innerText = sales.length;
+                document.getElementById('totalLoss').innerText = `KES ${totalLossValue.toLocaleString()}`;
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('auditBody').innerHTML = `<tr><td colspan="6" style="color:var(--danger); text-align:center;">Error: ${err.message}</td></tr>`;
+            }
+        }
+        loadAudit();
+    </script>
+</body>
+</html>

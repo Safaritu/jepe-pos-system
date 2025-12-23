@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JEPE CO LTD | Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: #1e293b; 
+            --accent: #00ffcc; 
+            --text-main: #f8fafc; 
+            --warning: #f59e0b; 
+            --danger: #ef4444; 
+            --sidebar-width: 240px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; overflow-x: hidden; background-color: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        /* Navigation */
+        .sidebar { width: var(--sidebar-width); background: #020617; height: 100vh; position: fixed; padding: 20px; border-right: 1px solid #334155; z-index: 1000; transition: 0.3s; }
+        .main-content { margin-left: var(--sidebar-width); padding: 20px; padding-bottom: 100px; width: calc(100% - var(--sidebar-width)); min-height: 100vh; }
+
+        .nav-item { display: flex; align-items: center; padding: 12px 15px; color: #94a3b8; text-decoration: none; border-radius: 8px; margin-bottom: 8px; transition: 0.2s; }
+        .nav-item i { width: 20px; margin-right: 10px; }
+        .nav-item.active { background: var(--card-bg); color: var(--accent); }
+
+        @media (max-width: 900px) {
+            .sidebar { 
+                width: 100%; height: 70px; bottom: 0; top: auto; left: 0; 
+                display: flex; justify-content: space-around; padding: 5px; 
+                border-right: none; border-top: 1px solid #334155; background: #020617;
+            }
+            .sidebar h2 { display: none; }
+            .main-content { margin-left: 0; width: 100%; padding: 15px; padding-bottom: 90px; }
+            .nav-item { flex-direction: column; font-size: 0.65rem; margin-bottom: 0; padding: 8px 5px; flex: 1; text-align: center; }
+            .nav-item i { margin-right: 0; margin-bottom: 4px; font-size: 1.2rem; }
+            .nav-item:not(.mobile-visible) { display: none; }
+            .gas-hub-btn { position: absolute; top: -30px; background: var(--warning) !important; border-radius: 50% !important; width: 60px !important; height: 60px !important; display: flex !important; justify-content: center; border: 4px solid var(--bg-dark) !important; }
+        }
+
+        /* Header & Stats */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .header h1 { font-size: 1.3rem; letter-spacing: -0.5px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        @media (min-width: 1024px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 12px; border-left: 4px solid var(--accent); }
+        .stat-card h3 { color: #94a3b8; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 8px; }
+        .stat-card .value { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .note { font-size: 0.65rem; color: #64748b; margin-top: 5px; }
+
+        /* Tables */
+        .table-container { width: 100%; overflow-x: auto; background: rgba(15, 23, 42, 0.5); border-radius: 12px; }
+        .styled-table { width: 100%; border-collapse: collapse; }
+        .styled-table th { text-align: left; color: #94a3b8; padding: 12px; font-size: 0.7rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
+        .styled-table td { padding: 14px 12px; border-bottom: 1px solid #1e293b; font-size: 0.85rem; }
+
+        /* Product Manager Controls */
+        .edit-input { background: #0f172a; border: 1px solid #334155; color: var(--accent); padding: 5px; border-radius: 4px; width: 80px; font-weight: bold; }
+        .btn-save { background: var(--accent); color: #020617; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
+        .btn-load-more { width: 100%; padding: 12px; background: #334155; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; transition: 0.3s; }
+        
+        #p-search { width: 100%; padding: 12px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; margin-bottom: 15px; outline: none; }
+        #p-search:focus { border-color: var(--accent); }
+
+        .gas-summary-container { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; }
+        .gas-summary-item { min-width: 140px; background: #020617; padding: 15px; border-radius: 15px; border: 1px solid #1e293b; }
+        
+        .activity-card { background: var(--card-bg); padding: 20px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #334155; }
+        .section-title { font-size: 1rem; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; color: var(--accent); }
+        .btn-logout { background: #334155; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar" id="sidebar">
+        <h2 style="color:var(--accent); margin-bottom: 30px; padding-left: 10px; font-size: 1.2rem;">JEPE CO LTD</h2>
+        <a href="admin.html" class="nav-item active mobile-visible"><i class="fas fa-chart-line"></i> <span>Home</span></a>
+        <a href="inventory.html" class="nav-item mobile-visible"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
+        <a href="indexgas.html" class="nav-item gas-hub-btn mobile-visible" style="background:var(--warning); color:black; font-weight:bold;"><i class="fas fa-gas-pump"></i></a>
+        <a href="sales-journal.html" class="nav-item mobile-visible"><i class="fas fa-receipt"></i> <span>Sales</span></a>
+        <a href="shift-auditor.html" class="nav-item mobile-visible"><i class="fas fa-user-check"></i> <span>Audit</span></a>
+        <a href="gas-inventory.html" class="nav-item"><i class="fas fa-cylinder"></i> Gas Stock</a>
+        <a href="product-manager.html" class="nav-item"><i class="fas fa-tags"></i> Price List</a>
+    </nav>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h1 style="color: var(--accent)">JEPE Management Terminal</h1>
+                <p id="current-date-display" style="color:#64748b; font-size: 0.85rem;"></p>
+            </div>
+            <button class="btn-logout" onclick="location.href='index.html'">Logout</button>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card" style="border-left-color: #22c55e;">
+                <h3>Liquid Assets</h3>
+                <div class="value" id="stat-liquid">KES 0</div>
+                <span class="note">Cash + Mpesa Transactions</span>
+            </div>
+            <div class="stat-card" style="border-left-color: #3b82f6;">
+                <h3>Bank Balance</h3>
+                <div class="value" id="stat-bank">KES 0</div>
+                <span class="note">Equity + KCB Accounts</span>
+            </div>
+            <div class="stat-card" style="border-left-color: var(--danger);">
+                <h3>Low Stock Items</h3>
+                <div class="value" id="stat-lowstock">0</div>
+                <span class="note">Requires urgent reorder</span>
+            </div>
+            <div class="stat-card" style="border-left-color: var(--warning);">
+                <h3>Gross Revenue</h3>
+                <div class="value" id="stat-total">KES 0</div>
+                <span class="note">Consolidated daily total</span>
+            </div>
+        </section>
+
+        <section class="activity-card">
+            <h2 class="section-title"><i class="fas fa-tasks"></i> Operational Product Manager</h2>
+            <input type="text" id="p-search" placeholder="Quick find product for pricing/stock update...">
+            <div class="table-container">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Sell Price</th>
+                            <th>Min (MSP)</th>
+                            <th>Stock</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productManagerBody"></tbody>
+                </table>
+            </div>
+            <button id="btn-load-more-products" class="btn-load-more">View More Products</button>
+        </section>
+
+        <section class="activity-card">
+            <h2 class="section-title"><i class="fas fa-gas-pump"></i> Gas Cylinder Overview</h2>
+            <div class="gas-summary-container" id="gas-list"></div>
+        </section>
+
+        <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+            <section class="activity-card">
+                <h2 class="section-title"><i class="fas fa-trophy"></i> Daily Performance (Top Sellers)</h2>
+                <div class="table-container">
+                    <table class="styled-table">
+                        <thead><tr><th>Product Name</th><th>Generated Revenue</th></tr></thead>
+                        <tbody id="topProductsBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="activity-card">
+                <h2 class="section-title"><i class="fas fa-history"></i> System Adjustment Log</h2>
+                <div class="table-container">
+                    <table class="styled-table">
+                        <thead><tr><th>Time</th><th>Category</th><th>Amount</th></tr></thead>
+                        <tbody id="logBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        const format = (v) => Number(v || 0).toLocaleString();
+        let allProducts = [];
+        let displayedCount = 5;
+        const pageStep = 5;
+
+        async function loadDashboard() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 1. Stats Calculation
+            const { data: sales } = await supabase.from('sales').select('*').gte('created_at', today);
+            let liq = 0, bank = 0;
+            sales?.forEach(s => {
+                const m = s.payment_method.toUpperCase();
+                if(m.includes('CASH') || m.includes('MPESA')) liq += s.total_amount;
+                else if(m.includes('KCB') || m.includes('EQUITY')) bank += s.total_amount;
+            });
+            document.getElementById('stat-liquid').innerText = `KES ${format(liq)}`;
+            document.getElementById('stat-bank').innerText = `KES ${format(bank)}`;
+            document.getElementById('stat-total').innerText = `KES ${format(liq + bank)}`;
+
+            // 2. Gas Stock
+            const { data: gas } = await supabase.from('gas_stock').select('*');
+            document.getElementById('gas-list').innerHTML = gas.map(g => `
+                <div class="gas-summary-item">
+                    <div style="font-size:0.75rem; color:#94a3b8;">${g.brand_name}</div>
+                    <div class="value" style="color:${g.full_stock < 7 ? '#ef4444' : '#fff'}">${g.full_stock} FULL</div>
+                    <div style="font-size:0.7rem; color: #64748b;">${g.empty_stock} Empty</div>
+                </div>
+            `).join('');
+
+            // 3. Activity Log
+            const { data: logs } = await supabase.from('store_transactions').select('*').order('created_at', {ascending: false}).limit(8);
+            document.getElementById('logBody').innerHTML = logs.map(l => `
+                <tr>
+                    <td style="font-size:0.75rem">${new Date(l.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td style="color:${l.type==='OUT'?'#ef4444':'#00ffcc'}">${l.type==='OUT'?'Business Expense':'Credit/Income'}</td>
+                    <td style="font-weight:bold">KES ${format(l.amount)}</td>
+                </tr>
+            `).join('');
+
+            // 4. Products Manager
+            const { data: prods } = await supabase.from('products').select('*').order('name', {ascending: true});
+            allProducts = prods || [];
+            renderProductManager();
+            document.getElementById('stat-lowstock').innerText = allProducts.filter(p => p.stock_quantity < 10).length;
+
+            // 5. Top Sellers
+            const prodMap = {};
+            sales?.forEach(s => prodMap[s.item_name] = (prodMap[s.item_name] || 0) + s.total_amount);
+            const sorted = Object.entries(prodMap).sort((a,b) => b[1]-a[1]).slice(0, 5);
+            document.getElementById('topProductsBody').innerHTML = sorted.map(([n, a]) => `
+                <tr><td>${n}</td><td style="color:var(--accent); font-weight:bold">KES ${format(a)}</td></tr>
+            `).join('');
+        }
+
+        function renderProductManager() {
+            const searchTerm = document.getElementById('p-search').value.toLowerCase();
+            const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
+            const slice = filtered.slice(0, displayedCount);
+            
+            document.getElementById('productManagerBody').innerHTML = slice.map(p => `
+                <tr>
+                    <td>${p.name}</td>
+                    <td><input type="number" class="edit-input" id="pr-${p.id}" value="${p.unit_price}"></td>
+                    <td><input type="number" class="edit-input" id="ms-${p.id}" value="${p.min_price || 0}"></td>
+                    <td><input type="number" class="edit-input" id="st-${p.id}" value="${p.stock_quantity}"></td>
+                    <td><button class="btn-save" onclick="updateProduct(${p.id})">Save</button></td>
+                </tr>
+            `).join('');
+
+            const btn = document.getElementById('btn-load-more-products');
+            btn.style.display = displayedCount >= filtered.length ? 'none' : 'block';
+        }
+
+        window.updateProduct = async (id) => {
+            const up = document.getElementById(`pr-${id}`).value;
+            const ms = document.getElementById(`ms-${id}`).value;
+            const st = document.getElementById(`st-${id}`).value;
+            
+            const { error } = await supabase.from('products').update({
+                unit_price: parseFloat(up),
+                min_price: parseFloat(ms),
+                stock_quantity: parseInt(st)
+            }).eq('id', id);
+
+            if(!error) {
+                const pIndex = allProducts.findIndex(p => p.id === id);
+                if(pIndex !== -1) {
+                    allProducts[pIndex].unit_price = parseFloat(up);
+                    allProducts[pIndex].min_price = parseFloat(ms);
+                    allProducts[pIndex].stock_quantity = parseInt(st);
+                }
+                alert("JEPE Database Securely Updated.");
+            } else {
+                alert("Database Connection Error.");
+            }
+        };
+
+        document.getElementById('btn-load-more-products').onclick = () => {
+            displayedCount += pageStep;
+            renderProductManager();
+        };
+
+        document.getElementById('p-search').oninput = () => {
+            displayedCount = 5;
+            renderProductManager();
+        };
+
+        document.getElementById('current-date-display').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+        loadDashboard();
+    </script>
+</body>
+</html>

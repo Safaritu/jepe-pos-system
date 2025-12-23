@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shop | Sales Journal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: #1e293b; 
+            --accent: #00ffcc; 
+            --text-main: #f8fafc; 
+            --sidebar-width: 240px; 
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        /* Responsive Sidebar */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            background: #020617; 
+            height: 100vh; 
+            position: fixed; 
+            padding: 20px; 
+            border-right: 1px solid #334155; 
+            z-index: 1000;
+            transition: 0.3s;
+        }
+
+        .main-content { 
+            margin-left: var(--sidebar-width); 
+            padding: 20px; 
+            width: calc(100% - var(--sidebar-width)); 
+            box-sizing: border-box; 
+            transition: 0.3s;
+        }
+
+        /* Journal Container */
+        .journal-card { 
+            background: var(--card-bg); 
+            padding: 15px; 
+            border-radius: 12px; 
+            border: 1px solid #334155; 
+        }
+
+        .styled-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+        }
+
+        .styled-table th { 
+            text-align: left; 
+            color: #94a3b8; 
+            padding: 12px; 
+            border-bottom: 2px solid #334155; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+        }
+
+        .styled-table td { 
+            padding: 12px; 
+            border-bottom: 1px solid #334155; 
+        }
+
+        /* Tags & Badges */
+        .tag { padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; display: inline-block; }
+        .tag-gas { background: rgba(0, 255, 204, 0.15); color: var(--accent); border: 1px solid var(--accent); }
+        .tag-general { background: #334155; color: #94a3b8; }
+        .qty-badge { background: #0f172a; padding: 3px 8px; border-radius: 4px; color: #94a3b8; font-size: 0.7rem; border: 1px solid #334155; }
+        .sale-type { font-size: 0.75rem; color: #64748b; font-style: italic; }
+
+        /* MOBILE OPTIMIZATION (Phone View) */
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: 60px; 
+                padding: 15px 5px; 
+            }
+            .sidebar h2, .sidebar span { display: none; }
+            
+            .main-content { 
+                margin-left: 60px; 
+                width: calc(100% - 60px); 
+                padding: 10px; 
+            }
+
+            /* Hide table headers on mobile */
+            .styled-table thead { display: none; }
+
+            /* Turn rows into cards */
+            .styled-table tr { 
+                display: block; 
+                background: #1e293b; 
+                margin-bottom: 12px; 
+                border-radius: 10px; 
+                padding: 12px; 
+                border: 1px solid #334155;
+            }
+
+            .styled-table td { 
+                display: block; 
+                width: 100%; 
+                padding: 5px 0; 
+                border: none; 
+                text-align: left;
+            }
+
+            /* Positioning Amount and Time in corners of the card */
+            .styled-table td:nth-child(1) { font-size: 0.8rem; color: #94a3b8; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 5px; }
+            .styled-table td:last-child { 
+                text-align: right; 
+                margin-top: -35px; /* Pulls amount up to align with item name */
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <h2 style="color: var(--accent); font-size: 1.2rem;">S S</h2>
+        <a href="admin.html" class="nav-item" style="color:#94a3b8; text-decoration:none; display:block; padding:15px 0; text-align:center;"><i class="fas fa-th-large"></i> <span>Dashboard</span></a>
+        <a href="gas-inventory.html" class="nav-item" style="color:#94a3b8; text-decoration:none; display:block; padding:15px 0; text-align:center;"><i class="fas fa-burn"></i> <span>Gas</span></a>
+        <a href="sales-journal.html" class="nav-item" style="color:var(--accent); text-decoration:none; display:block; padding:15px 0; text-align:center;"><i class="fas fa-book"></i> <span>Journal</span></a>
+    </nav>
+
+    <main class="main-content">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 style="font-size: 1.4rem;">Journal</h1>
+            <button onclick="loadJournal()" style="background: none; border: 1px solid var(--accent); color: var(--accent); padding: 8px 12px; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-sync"></i>
+            </button>
+        </header>
+
+        <section class="journal-card">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th width="15%">Time</th>
+                        <th width="35%">Item Details</th>
+                        <th width="15%">Category</th>
+                        <th width="15%">Sale Type</th>
+                        <th width="20%">Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="journalBody">
+                    <tr><td colspan="5" style="text-align:center; padding:40px;">Syncing Transactions...</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        async function loadJournal() {
+            const tbody = document.getElementById('journalBody');
+            
+            const { data: sales, error } = await supabase
+                .from('sales')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                return tbody.innerHTML = `<tr><td colspan="5" style="color:#ef4444;">Error: ${error.message}</td></tr>`;
+            }
+
+            if (!sales || sales.length === 0) {
+                return tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b; padding: 20px;">No sales recorded today.</td></tr>`;
+            }
+
+            tbody.innerHTML = sales.map(sale => {
+                const dateObj = new Date(sale.created_at);
+                const time = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                const isGas = sale.sale_category?.toLowerCase() === 'gas';
+                const categoryClass = isGas ? 'tag-gas' : 'tag-general';
+                const itemName = sale.item_name || 'General Product';
+                
+                const qtyInfo = isGas 
+                    ? `<span class="qty-badge">${sale.quantity || 1} x ${sale.cylinder_size || 'N/A'}KG</span>`
+                    : `<span class="qty-badge">Qty: ${sale.quantity || 1}</span>`;
+
+                return `
+                    <tr>
+                        <td>
+                            <div style="color: #f8fafc; font-weight: bold;">${time}</div>
+                            <div style="font-size: 0.65rem; color: #64748b;">${dateObj.toLocaleDateString()}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: bold; color: #f8fafc; margin-bottom: 4px;">${itemName}</div>
+                            <div>${qtyInfo}</div>
+                        </td>
+                        <td><span class="tag ${categoryClass}">${sale.sale_category || 'General'}</span></td>
+                        <td>
+                            <div class="sale-type">${sale.gas_sale_type || sale.payment_method || 'Standard'}</div>
+                        </td>
+                        <td style="color: var(--accent); font-weight: bold;">
+                            KES ${Number(sale.total_amount).toLocaleString()}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        window.loadJournal = loadJournal;
+        loadJournal();
+    </script>
+</body>
+</html>

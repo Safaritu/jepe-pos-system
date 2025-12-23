@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Shop | Daily Z-Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --bg: #f1f5f9; --dark: #1e293b; --accent: #0f172a; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); padding: 40px; }
+        .report-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; }
+        .total-box { background: #f8fafc; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #e2e8f0; }
+        .method-title { font-weight: bold; color: var(--dark); margin-top: 20px; display: block; border-left: 4px solid #3b82f6; padding-left: 10px; }
+        .expected { font-size: 1.2rem; font-weight: bold; color: #059669; }
+        .print-btn { background: var(--accent); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; float: right; }
+        @media print { .print-btn { display: none; } body { padding: 0; background: white; } .report-container { box-shadow: none; border: none; } }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> Print Report</button>
+        <div class="header">
+            <h1>Daily Z-Report</h1>
+            <p id="report-date"></p>
+        </div>
+
+        <div id="report-content">
+            </div>
+
+        <div class="total-box">
+            <h3>Final Expected Balances</h3>
+            <div id="final-balances"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase, formatCurrency } from './cashier.js';
+
+        async function generateReport() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('report-date').innerText = new Date().toLocaleDateString('en-GB', { dateStyle: 'full' });
+
+            // 1. Fetch Today's Sales
+            const { data: sales } = await supabase.from('sales_transactions').select('*').gte('created_at', today);
+            
+            // 2. Fetch Today's Float Movements (Manual IN/OUT)
+            const { data: floats } = await supabase.from('daily_float_records').select('*').gte('created_at', today);
+
+            const methods = ['Cash', 'Mpesa', 'Equity', 'KCB'];
+            const container = document.getElementById('report-content');
+            const balanceContainer = document.getElementById('final-balances');
+
+            let html = "";
+            let balanceHtml = "";
+
+            methods.forEach(method => {
+                const methodSales = sales?.filter(s => s.payment_method === method).reduce((sum, s) => sum + s.total_amount, 0) || 0;
+                const methodIn = floats?.filter(f => f.float_type === method && f.transaction_type === 'IN').reduce((sum, f) => sum + f.amount, 0) || 0;
+                const methodOut = floats?.filter(f => f.float_type === method && f.transaction_type === 'OUT').reduce((sum, f) => sum + f.amount, 0) || 0;
+                
+                const expected = methodSales + methodIn - methodOut;
+
+                html += `
+                    <span class="method-title">${method.toUpperCase()} Analysis</span>
+                    <div class="summary-row"><span>Total Sales</span> <span>${formatCurrency(methodSales)}</span></div>
+                    <div class="summary-row"><span>Manual Deposits (IN)</span> <span>${formatCurrency(methodIn)}</span></div>
+                    <div class="summary-row"><span>Expenses/Draws (OUT)</span> <span style="color:#dc2626">-${formatCurrency(methodOut)}</span></div>
+                `;
+
+                balanceHtml += `
+                    <div class="summary-row">
+                        <strong>${method} Expected:</strong>
+                        <span class="expected">${formatCurrency(expected)}</span>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            balanceContainer.innerHTML = balanceHtml;
+        }
+
+        generateReport();
+    </script>
+</body>
+</html>

@@ -191,6 +191,7 @@
                             <th>Logs (In/Out)</th>
                             <th>Closing Breakdown</th>
                             <th>Variance</th>
+                            <th>Reason/Note</th>
                         </tr>
                     </thead>
                     <tbody id="history-body"></tbody>
@@ -224,9 +225,9 @@
                 <div><label>Actual Eqt</label><input type="number" id="closeEquityInput"></div>
             </div>
             <div id="reconResultBox" style="display:none; margin-top:15px; padding:10px; background:#e2e8f0; border-radius:8px;"></div>
-            <div id="varianceNoteBox" style="display:none; margin-top:10px;">
-                <label style="color:var(--expense); font-weight:bold;">Variance Note:</label>
-                <input type="text" id="closeNote">
+            <div id="varianceNoteBox" style="margin-top:10px;">
+                <label style="color:var(--expense); font-weight:bold;">Reason/Note for Variance:</label>
+                <input type="text" id="closeNote" placeholder="Explain shortages or general notes...">
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button onclick="calculateShiftTotals()" style="flex:1; padding:12px; background:#334155; color:white; border:none; border-radius:8px;">Analyze</button>
@@ -349,7 +350,7 @@
         async function loadShiftHistory(clear = false) {
             if(clear) { 
                 historyOffset = 0; 
-                document.getElementById('history-body').innerHTML = '<tr><td colspan="5" style="text-align:center">Loading history...</td></tr>'; 
+                document.getElementById('history-body').innerHTML = '<tr><td colspan="6" style="text-align:center">Loading history...</td></tr>'; 
             }
             
             const { data: shifts } = await supabase.from('shifts')
@@ -367,7 +368,7 @@
                 await renderHistory(shifts);
                 historyOffset += historyLimit;
             } else if (historyOffset === 0) {
-                document.getElementById('history-body').innerHTML = '<tr><td colspan="5" style="text-align:center">No shifts found</td></tr>';
+                document.getElementById('history-body').innerHTML = '<tr><td colspan="6" style="text-align:center">No shifts found</td></tr>';
             }
         }
 
@@ -416,6 +417,9 @@
                     </td>
                     <td data-label="Variance">
                         ${s.status==='CLOSED' ? `<span class="var-badge ${variance >= 0 ? 'var-pos' : 'var-neg'}">${variance.toLocaleString()}</span>` : '---'}
+                    </td>
+                    <td data-label="Reason/Note" style="font-size:0.75rem; color:#64748b;">
+                        ${s.closing_notes || '-'}
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -547,7 +551,12 @@
                 user_id: currentUser.id,
                 note: saleNote
             });
-            if(!error) location.reload(); else { alert("Error saving sale."); btn.disabled = false; }
+            if(!error) location.reload(); 
+            else { 
+                alert("Error saving sale. Ensure your database has the 'note' column."); 
+                console.error(error);
+                btn.disabled = false; 
+            }
         };
 
         window.calculateShiftTotals = () => {
@@ -557,7 +566,6 @@
             const display = document.getElementById('reconResultBox');
             display.style.display = 'block';
             display.innerHTML = `System Expected: ${totalExpected.toLocaleString()}<br>Actual Entered: ${actualTotal.toLocaleString()}<br><b style="color:${diff<0?'red':'green'}">Variance: ${diff.toLocaleString()}</b>`;
-            document.getElementById('varianceNoteBox').style.display = diff !== 0 ? 'block' : 'none';
             document.getElementById('btnConfirmClose').style.display = 'block';
         };
 

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Oversight | Low Price Alerts</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --danger: #dc2626; --text-main: #1e293b; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text-main); }
+        
+        .admin-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; }
+        
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h4 { margin: 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+        .card .val { font-size: 1.5rem; font-weight: 700; margin-top: 10px; }
+        
+        .table-wrap { background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f5f9; padding: 15px; text-align: left; font-size: 0.8rem; color: #475569; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+        
+        .alert-row { background-color: #fffafb; }
+        .price-diff { color: var(--danger); font-weight: 800; }
+        .reason-box { background: #fef2f2; border: 1px solid #fee2e2; padding: 6px 10px; border-radius: 6px; font-style: italic; font-size: 0.85rem; color: #991b1b; }
+        
+        .btn-refresh { background: #0f172a; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .btn-refresh:hover { background: #1e293b; }
+        
+        @media (max-width: 768px) {
+            th:nth-child(4), td:nth-child(4) { display: none; } /* Hide min price on mobile */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-header">
+        <div>
+            <h1 style="margin: 0;">Price Deviation Report</h1>
+            <p style="margin: 5px 0; color: #64748b;">All sales recorded below set minimum price limits</p>
+        </div>
+        <button onclick="loadAlerts()" class="btn-refresh"><i class="fas fa-sync-alt"></i> Refresh Data</button>
+    </div>
+
+    <div class="metrics">
+        <div class="card" style="border-top: 4px solid var(--danger);">
+            <h4>Total Revenue Lost</h4>
+            <div class="val" id="total-loss" style="color: var(--danger);">KES 0</div>
+        </div>
+        <div class="card" style="border-top: 4px solid #3b82f6;">
+            <h4>Discount Incidents</h4>
+            <div class="val" id="incident-count">0</div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time/Date</th>
+                    <th>Product & Qty</th>
+                    <th>Sold At</th>
+                    <th>Min Limit</th>
+                    <th>Shortage</th>
+                    <th>Cashier Justification</th>
+                </tr>
+            </thead>
+            <tbody id="alert-body">
+                </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { supabase } from './auth.js';
+
+        async function loadAlerts() {
+            const tableBody = document.getElementById('alert-body');
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Analyzing sales logs...</td></tr>';
+
+            // 1. Get all products to know their min_price
+            const { data: products } = await supabase.from('products').select('name, min_price');
+            
+            // 2. Get sales marked as discounted
+            const { data: sales, error } = await supabase
+                .from('sales')
+                .select('*')
+                .ilike('note', 'DISCOUNTED%')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="color:red;">Error connecting to database.</td></tr>';
+                return;
+            }
+
+            let totalLoss = 0;
+            let count = 0;
+            tableBody.innerHTML = '';
+
+            if (!sales || sales.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 40px; color: #94a3b8;">No low-price sales detected in this period.</td></tr>';
+                return;
+            }
+
+            sales.forEach(sale => {
+                const product = products.find(p => p.name === sale.item_name);
+                const minPrice = product ? product.min_price : 0;
+                
+                // Calculate shortage per unit and total
+                const unitShortage = minPrice - sale.unit_price;
+                const totalShortage = unitShortage * sale.quantity;
+
+                if (totalShortage > 0) {
+                    totalLoss += totalShortage;
+                    count++;
+
+                    const row = `
+                        <tr class="alert-row">
+                            <td>${new Date(sale.created_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</td>
+                            <td><strong>${sale.item_name}</strong><br><small>Qty: ${sale.quantity}</small></td>
+                            <td>KES ${sale.unit_price.toLocaleString()}</td>
+                            <td>KES ${minPrice.toLocaleString()}</td>
+                            <td class="price-diff">- ${totalShortage.toLocaleString()}</td>
+                            <td>
+                                <div class="reason-box">
+                                    ${sale.note.replace('DISCOUNTED: ', '')}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.insertAdjacentHTML('beforeend', row);
+                }
+            });
+
+            document.getElementById('total-loss').innerText = `KES ${totalLoss.toLocaleString()}`;
+            document.getElementById('incident-count').innerText = count;
+        }
+
+        // Run on load
+        loadAlerts();
+    </script>
+</body>
+</html>

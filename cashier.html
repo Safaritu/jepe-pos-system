@@ -155,7 +155,7 @@
             <div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3 style="font-size: 0.9rem; margin-bottom:10px;"><i class="fas fa-shopping-cart"></i> Recent Sales</h3>
-                    <button onclick="showSalesHistory()" style="background:none; border:none; color:var(--primary); font-weight:bold; cursor:pointer; font-size:0.8rem;">View All History</button>
+                    <button onclick="saleshistory.html" style="background:none; border:none; color:var(--primary); font-weight:bold; cursor:pointer; font-size:0.8rem;">View All History</button>
                 </div>
                 <div class="table-container responsive-table">
                     <table>
@@ -165,7 +165,7 @@
                 </div>
             </div>
             <div>
-                <h3 style="font-size: 0.9rem;"><i class="fas fa-file-invoice-dollar"></i> Money Logs</h3>
+                <h3 style="font-size: 0.9rem;"><i class="fas fa-file-invoice-dollar"></i> Money (IN/OUT)</h3>
                 <div class="table-container responsive-table">
                     <table>
                         <thead><tr><th>Type</th><th>Amt</th><th>Acc</th><th>Note</th></tr></thead>
@@ -188,7 +188,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Opening Breakdown</th>
-                            <th>Logs (In/Out)</th>
+                            <th>MONEY (In/Out)</th>
                             <th>Closing Breakdown</th>
                             <th>Variance</th>
                             <th>Reason/Note</th>
@@ -231,7 +231,7 @@
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button onclick="calculateShiftTotals()" style="flex:1; padding:12px; background:#334155; color:white; border:none; border-radius:8px;">Analyze</button>
-                <button id="btnConfirmClose" style="flex:1; padding:12px; background:var(--income); color:white; border:none; border-radius:8px; display:none;">End Shift</button>
+                <button id="btnConfirmClose" style="flex:1; padding:12px; background:var(--income); color:white; border:none; border-radius:8px; display:none;">End DAY</button>
             </div>
         </div>
     </div>
@@ -632,4 +632,5 @@
     </script>
 </body>
 </html>
+
 
